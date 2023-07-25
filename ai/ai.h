@@ -50,8 +50,10 @@ bool get_garbage_obstruct(Field& field, std::vector<Cell::Pair>& queue);
 
 bool get_small_field(Field& field, Field& other);
 
-bool get_in_danger(Field& field);
+bool get_bad_field(Field& field);
 
 bool get_can_receive_garbage(Field& field, Enemy& enemy);
+
+void get_gaze_field(Field& field, Chain::Score& detect_highest, Chain::Score& detect_harass);
 
 };

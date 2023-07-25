@@ -3,39 +3,37 @@
 namespace Eval
 {
 
-i32 evaluate(Field& field, std::optional<Detect::Result> detect, u8 tear, Weight& w)
+i32 evaluate(Field& field, u8 tear, Weight& w)
 {
     i32 result = 0;
 
     u8 heights[6];
     field.get_heights(heights);
 
-    if (detect.has_value()) {
-        result += (detect->score.chain.score >> 8) * w.chain_score;
-        result += detect->score.chain.count * w.chain_count;
-        result += detect->score.height * w.chain_height;
-        result += detect->score.needed * w.chain_needed;
+    i32 detect = 0;
+    Detect::detect(field, [&] (Detect::Result detect_result) {
+        i32 score = 0;
+
+        score += (detect_result.score.chain.score >> 8) * w.chain_score;
+        score += detect_result.score.chain.count * w.chain_count;
+        score += detect_result.score.height * w.chain_height;
+        score += detect_result.score.needed * w.chain_needed;
 
         const i32 x_coef[6] = { 0, 2, 1, -1, -2, -3};
-        result += x_coef[detect->score.x] * w.chain_x;
-    }
+        score += x_coef[detect_result.score.x] * w.chain_x;
+
+        detect = std::max(detect, score);
+    });
+    result += detect;
 
     i32 u = 0;
-    // u += std::max(0, heights[1] - heights[0]);
-    // // u += std::max(0, heights[2] - heights[1]);
-    // // u += std::max(0, heights[3] - heights[4]);
-    // u += std::max(0, heights[4] - heights[5]);
-    // result += u * w.u;
-
-    // i32 bump_mid = 0;
-    // i32 highest_mid = *std::max_element(heights + 1, heights + 5);
-    // for (i32 i = 1; i < 5; ++i) {
-    //     bump_mid += highest_mid - heights[i];
-    // }
-    // result += bump_mid * w.bump_mid;
-    const i32 coef[6] = { 2, 0, 0, 0, 0, 2 };
-    // const i32 coef_mid[6] = { 3, 1, 0, 0, 1, 3 };
-    // auto coef = (field.get_count() > 24) ? coef_mid : coef_open;
+    i32 coef[6] = { 2, 0, 0, 0, 0, 2 };
+    if (field.get_count() >= 36) {
+        coef[0] = 4;
+        coef[1] = 2;
+        coef[4] = 2;
+        coef[5] = 4;
+    }
     auto max_height_mid = std::max(heights[2], heights[3]);
     for (i32 i = 0; i < 6; ++i) {
         u += std::abs(heights[i] - max_height_mid - coef[i]);
@@ -83,7 +81,29 @@ i32 evaluate(Field& field, std::optional<Detect::Result> detect, u8 tear, Weight
     result += link_mid * w.link_mid;
 
     if (w.form != 0) {
-        result += Form::evaluate(field, heights, Form::DEFAULT()) * w.form;
+        // i32 gtr = -100;
+        // for (i32 i = 0; i < 5; ++i) {
+        //     gtr = Form::evaluate(field, heights, Form::GTR[i]);
+
+        //     if (gtr >= 0) {
+        //         break;
+        //     }
+        // }
+
+        // i32 gtr = Form::evaluate(field, heights, Form::GTR1());
+
+        i32 gtr = -100;
+        for (i32 i = 0; i < 2; ++i) {
+            gtr = Form::evaluate(field, heights, Form::GTR[i]);
+
+            if (gtr >= 0) {
+                break;
+            }
+        }
+
+        if (gtr >= 0) {
+            result += gtr * w.form;
+        }
     }
 
     result += tear * w.tear;

@@ -3,10 +3,8 @@
 namespace Detect
 {
 
-Result detect(Field& field)
+void detect(Field& field, std::function<void(Result)> callback)
 {
-    Result result;
-
     u8 heights[6];
     field.get_heights(heights);
 
@@ -21,6 +19,10 @@ Result detect(Field& field)
     for (i8 x = min_x; x < 6; ++x) {
         if (heights[x] > 11) {
             break;
+        }
+
+        if (Detect::is_well(heights, x) && heights[x] < 9) {
+            continue;
         }
 
         u8 max_puyo_add = std::min(
@@ -45,19 +47,15 @@ Result detect(Field& field)
             auto chain_mask_raw = plan.pop();
             auto chain_score_raw = Chain::get_score(chain_mask_raw);
 
-            result = std::max(
-                result,
-                Result {
-                    .score = Score {
-                        .chain = chain_score_raw,
-                        .needed = i + 1,
-                        .height = heights[x],
-                        .x = x
-                    },
-                    .plan = plan
+            callback(Result {
+                .score = Score {
+                    .chain = chain_score_raw,
+                    .needed = i + 1,
+                    .height = heights[x],
+                    .x = x
                 },
-                Detect::cmp_main
-            );
+                .plan = plan
+            });
 
             if (chain_score_raw.count == 1) {
                 for (u8 k = 0; k < Cell::COUNT - 1; ++k) {
@@ -79,26 +77,20 @@ Result detect(Field& field)
                         auto chain_mask = copy_copy.pop();
                         auto chain_score = Chain::get_score(chain_mask);
 
-                        result = std::max(
-                            result,
-                            Result {
-                                .score = Score {
-                                    .chain = chain_score,
-                                    .needed = i + 2,
-                                    .height = heights[x],
-                                    .x = x
-                                },
-                                .plan = copy_copy
+                        callback(Result {
+                            .score = Score {
+                                .chain = chain_score,
+                                .needed = i + 2,
+                                .height = heights[x],
+                                .x = x
                             },
-                            Detect::cmp_main
-                        );
+                            .plan = copy_copy
+                        });
                     }
                 }
             }
         }
     }
-
-    return result;
 };
 
 Result detect_fast(Field& field)

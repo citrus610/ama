@@ -19,7 +19,7 @@ struct Result
     Field plan = Field();
 };
 
-Result detect(Field& field);
+void detect(Field& field, std::function<void(Result)> callback);
 
 Result detect_fast(Field& field);
 

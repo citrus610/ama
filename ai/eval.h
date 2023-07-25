@@ -35,7 +35,7 @@ struct Weight
     i32 chain_x = 0;
 };
 
-i32 evaluate(Field& field, std::optional<Detect::Result> detect, u8 tear, Weight& w);
+i32 evaluate(Field& field, u8 tear, Weight& w);
 
 constexpr Weight DEFAULT_WEIGHT = {
     .u = -150,

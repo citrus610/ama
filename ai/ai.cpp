@@ -154,6 +154,12 @@ Result build_attack(Search::Result& search_result, Field& field, Data data, std:
                 attacks.push_back({ c.placement, attack });
             }
         }
+
+        for (auto& attack : c.attacks_detect) {
+            if (condition(attack)) {
+                attacks.push_back({ c.placement, attack });
+            }
+        }
     }
 
     if (!attacks.empty()) {
@@ -407,18 +413,19 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
 
     // If the enemy is being obstructed by garbage
     if (AI::get_garbage_obstruct(enemy.field, enemy.queue)) {
-        printf("build harass garbage obstruct\n");
+        // printf("build harass garbage obstruct\n");
         // Build fast and trigger chain fast
         AI::get_attacks_eval(search_result, w);
         AI::get_candidate_eval(search_result, Eval::FAST_WEIGHT);
-        return AI::build_attack(search_result, field, data, [&] (Search::Attack& attack) {
-            return attack.score + data.bonus + data.all_clear * 30 * data.target >= 5000;
-        });
+        // return AI::build_attack(search_result, field, data, [&] (Search::Attack& attack) {
+        //     return attack.score + data.bonus + data.all_clear * 30 * data.target >= 2100;
+        // });
+        return AI::build(search_result, field, 2100);
     }
 
     // Else, if our enemy's field is smaller than our's field a lot, then harass them
     if (AI::get_small_field(enemy.field, field)) {
-        printf("build harass small field\n");
+        // printf("build harass small field\n");
         // Trigger harassment
         AI::get_attacks_eval(search_result, w);
         AI::get_candidate_eval(search_result, Eval::FAST_WEIGHT);
@@ -427,16 +434,44 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
         });
     }
 
+    // Active gaze
+    Chain::Score enemy_detect_highest;
+    Chain::Score enemy_detect_harass;
+    AI::get_gaze_field(enemy.field, enemy_detect_highest, enemy_detect_harass);
+
     // Try harass
-    if (field.get_count() >= 42 && field.get_count() < 60 && AI::get_in_danger(enemy.field)) {
-        printf("build harass in danger\n");
+    if (field.get_count() >= 42 && field.get_count() < 60) {
+        // printf("harass\n");
         AI::get_attacks_eval(search_result, w);
         AI::get_candidate_eval(search_result, w);
         return AI::build_attack(search_result, field, data, [&] (Search::Attack& attack) {
-            return
-                (attack.score + data.bonus + data.all_clear * 30 * data.target >= 630) &&
-                (attack.count < 5) &&
-                (attack.score < 2400);
+            if (attack.result.get_count() < 42) {
+                return false;
+            }
+
+            auto attack_score = attack.score + data.bonus + data.all_clear * 30 * data.target;
+
+            if (attack_score < enemy_detect_harass.score - 140) {
+                return false;
+            }
+
+            if (attack.count == 1 && attack_score >= 420) {
+                return true;
+            }
+
+            if (attack.count == 2 && attack_score >= 630) {
+                return true;
+            }
+
+            if (attack.count == 3 && attack_score >= 1200) {
+                return true;
+            }
+
+            if (attack.count == 4 || attack.count == 5) {
+                return true;
+            }
+
+            return false;
         });
     }
 
@@ -469,12 +504,12 @@ void get_candidate_eval(Search::Result& search_result, Eval::Weight w)
 
                 auto& c = search_result.candidates[t_id];
 
-                c.eval_fast = Eval::evaluate(c.plan_fast.field, Detect::detect(c.plan_fast.field), c.plan_fast.tear, w);
+                c.eval_fast = Eval::evaluate(c.plan_fast.field, c.plan_fast.tear, w);
 
                 for (auto& p : c.plans) {
                     c.eval = std::max(
                         c.eval,
-                        Eval::evaluate(p.field, Detect::detect(p.field), p.tear, w)
+                        Eval::evaluate(p.field, p.tear, w)
                     );
                 }
             }
@@ -511,7 +546,7 @@ void get_attacks_eval(Search::Result& search_result, Eval::Weight w)
                 auto& c = search_result.candidates[t_id];
 
                 for (auto& attack : c.attacks) {
-                    attack.eval = Eval::evaluate(attack.result, Detect::detect(attack.result), 0, w);
+                    attack.eval = Eval::evaluate(attack.result, 0, w);
                 }
             }
         });
@@ -602,21 +637,19 @@ bool get_small_field(Field& field, Field& other)
     return other.get_count() > field.get_count() * 2;
 };
 
-bool get_in_danger(Field& field)
+bool get_bad_field(Field& field)
 {
     u8 heights[6];
     field.get_heights(heights);
 
-    auto detect = Detect::detect(field);
-
     auto height_diff = *std::max_element(heights, heights + 6) - *std::max_element(heights, heights + 6);
 
-    return detect.score.chain.score <= 840 || heights[2] > 10 || height_diff <= 1;
+    return heights[2] > 10 || height_diff <= 1;
 };
 
 bool get_can_receive_garbage(Field& field, Enemy& enemy)
 {
-    if (enemy.attack > 9) {
+    if (enemy.attack > 12) {
         return false;
     }
 
@@ -624,15 +657,9 @@ bool get_can_receive_garbage(Field& field, Enemy& enemy)
         return false;
     }
 
-    u8 heights[6];
-    field.get_heights(heights);
+    auto count = field.get_count();
 
-    auto height_diff = *std::max_element(heights, heights + 6) - *std::max_element(heights, heights + 6);
-    if (height_diff <= 2) {
-        return false;
-    }
-
-    if (field.data[static_cast<i32>(Cell::Type::GARBAGE)].get_count() >= 12) {
+    if (count > 56) {
         return false;
     }
 
@@ -640,9 +667,19 @@ bool get_can_receive_garbage(Field& field, Enemy& enemy)
         return false;
     }
 
-    auto count = field.get_count();
+    if (field.data[static_cast<i32>(Cell::Type::GARBAGE)].get_count() >= 6) {
+        return false;
+    }
 
-    if (count > 56) {
+    if (enemy.attack <= 3) {
+        return true;
+    }
+
+    u8 heights[6];
+    field.get_heights(heights);
+
+    auto height_diff = *std::max_element(heights, heights + 6) - *std::max_element(heights, heights + 6);
+    if (height_diff <= 1) {
         return false;
     }
 
@@ -653,7 +690,23 @@ bool get_can_receive_garbage(Field& field, Enemy& enemy)
         return enemy.attack <= 4;
     }
 
-    return enemy.attack <= 2;
+    return false;
+};
+
+void get_gaze_field(Field& field, Chain::Score& detect_highest, Chain::Score& detect_harass)
+{
+    detect_highest = { 0, 0 };
+    detect_harass = { 0, 0 };
+
+    Detect::detect(field, [&] (Detect::Result detect) {
+        if (detect.score.chain.score > detect_highest.score) {
+            detect_highest = detect.score.chain;
+        }
+
+        if (detect.score.chain.count < 6 && detect.score.chain.score > detect_harass.score) {
+            detect_harass = detect.score.chain;
+        }
+    });
 };
 
 };
