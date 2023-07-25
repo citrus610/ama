@@ -10,6 +10,10 @@ Ama is an AI that was created to play Puyo Puyo Tsu 1P and PVP. This project aim
 - Implements high recovery mode that can build chain very fast.
 - Decent chain building ablility.
 
+![Ama's chain count distribution (N = 1000)](assets/chain count.png)
+
+![Ama's chain score distribution (N = 1000)](assets/chain score.png)
+
 ## How to build
 For now, this projects can only be compiled using `g++` that supports `c++ 20`. Make sure that your cpu support `sse4` and `pext`.
 - Clone and `cd` to the repository.
