@@ -445,7 +445,7 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
         AI::get_attacks_eval(search_result, w);
         AI::get_candidate_eval(search_result, w);
         return AI::build_attack(search_result, field, data, [&] (Search::Attack& attack) {
-            if (attack.result.get_count() < 42) {
+            if (attack.result.get_count() < 36) {
                 return false;
             }
 
@@ -706,7 +706,7 @@ void get_gaze_field(Field& field, Chain::Score& detect_highest, Chain::Score& de
         if (detect.score.chain.count < 6 && detect.score.chain.score > detect_harass.score) {
             detect_harass = detect.score.chain;
         }
-    });
+    }, 2, 2);
 };
 
 };

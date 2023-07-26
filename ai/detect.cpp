@@ -3,7 +3,7 @@
 namespace Detect
 {
 
-void detect(Field& field, std::function<void(Result)> callback)
+void detect(Field& field, std::function<void(Result)> callback, i32 drop_max, i32 drop_min)
 {
     u8 heights[6];
     field.get_heights(heights);
@@ -26,7 +26,7 @@ void detect(Field& field, std::function<void(Result)> callback)
         }
 
         u8 max_puyo_add = std::min(
-            (is_well(heights, x) ? 1 : 2),
+            (is_well(heights, x) ? drop_min : drop_max),
             12 - heights[x] - (x == 2)
         );
 
