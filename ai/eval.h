@@ -27,6 +27,7 @@ struct Weight
     i32 form = 0;
 
     i32 tear = 0;
+    i32 waste = 0;
 
     i32 chain_count = 0;
     i32 chain_score = 0;
@@ -35,7 +36,7 @@ struct Weight
     i32 chain_x = 0;
 };
 
-i32 evaluate(Field& field, u8 tear, Weight& w);
+i32 evaluate(Field& field, i32 tear, i32 waste, Weight& w);
 
 constexpr Weight DEFAULT_WEIGHT = {
     .u = -150,
@@ -50,6 +51,7 @@ constexpr Weight DEFAULT_WEIGHT = {
     .form = 0,
 
     .tear = -200,
+    .waste = -100,
 
     .chain_count = 1000,
     .chain_score = 10,
@@ -71,6 +73,7 @@ constexpr Weight FAST_WEIGHT = {
     .form = 0,
 
     .tear = -250,
+    .waste = -200,
 
     .chain_count = 1000,
     .chain_score = 10,

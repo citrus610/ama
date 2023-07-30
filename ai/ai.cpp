@@ -217,11 +217,17 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
     auto search_result = Search::search(field, queue);
 
     if (search_result.candidates.empty()) {
+        printf("die\n");
         return Result {
             .placement = { .x = 2, .r = Direction::Type::UP },
             .eval = -1
         };
     }
+
+    // Active gaze
+    Chain::Score enemy_detect_highest;
+    Chain::Score enemy_detect_harass;
+    AI::get_gaze_field(enemy.field, enemy_detect_highest, enemy_detect_harass);
 
     // If enemy is attacking
     if (enemy.attack > 0) {
@@ -243,6 +249,7 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
                     }
                 );
 
+                printf("ac re\n");
                 return Result {
                     .placement = best.first,
                     .eval = 0
@@ -251,7 +258,12 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
         }
 
         // Try to receive small garbage
-        if (AI::get_can_receive_garbage(field, enemy)) {
+        if (!data.all_clear &&
+            AI::get_can_receive_garbage(field, enemy) &&
+            field.data[static_cast<i32>(Cell::Type::GARBAGE)].get_count() < 9 &&
+            !AI::get_small_field(enemy.field, field) &&
+            !AI::get_garbage_obstruct(enemy.field, enemy_detect_highest, enemy_detect_harass)) {
+            printf("accept\n");
             AI::get_candidate_eval(search_result, Eval::FAST_WEIGHT);
             return AI::build(search_result, field, 71000);
         }
@@ -312,6 +324,7 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
                 );
 
                 if ((best.second.score_total + data.bonus) / data.target + data.all_clear * 30 >= enemy.attack - 30) {
+                    printf("last ditch\n");
                     return Result {
                         .placement = best.first,
                         .eval = -1
@@ -320,13 +333,13 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
             }
             
             // If there aren't any possible offset attacks but the remaining time is large, then try to build chain fast
+            printf("catch\n");
             auto weight_build = Eval::FAST_WEIGHT;
             if (field.get_count() >= 48 && enemy.attack >= 60) {
                 weight_build = w;
             }
             AI::get_candidate_eval(search_result, weight_build);
             return AI::build(search_result, field, 71000);
-            
         }
         else {
             // Return the enemy's attack with the biggest chain if:
@@ -339,7 +352,7 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
                 attacks_in_frame_best >= 71000 ||
                 field.get_count() >= 60 ||
                 AI::get_small_field(enemy.field, field) ||
-                AI::get_garbage_obstruct(enemy.field, enemy.queue)) {
+                AI::get_garbage_obstruct(enemy.field, enemy_detect_highest, enemy_detect_harass)) {
                 auto best = *std::max_element(
                     attacks_return.begin(),
                     attacks_return.end(),
@@ -351,6 +364,7 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
                     }
                 );
 
+                printf("re big\n");
                 return Result {
                     .placement = best.first,
                     .eval = -1
@@ -397,6 +411,7 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
                 }
             );
 
+            printf("re smol\n");
             return Result {
                 .placement = best.first,
                 .eval = -1
@@ -406,42 +421,35 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
 
     // If we are in danger or the enemy is having all clear, them build fast and safely
     if (enemy.all_clear) {
+        printf("oppo ac\n");
         AI::get_attacks_eval(search_result, w);
         AI::get_candidate_eval(search_result, Eval::FAST_WEIGHT);
         return AI::build(search_result, field, 71000);
     }
 
     // If the enemy is being obstructed by garbage
-    if (AI::get_garbage_obstruct(enemy.field, enemy.queue)) {
-        // printf("build harass garbage obstruct\n");
+    if (AI::get_garbage_obstruct(enemy.field, enemy_detect_highest, enemy_detect_harass)) {
+        printf("gb kill\n");
         // Build fast and trigger chain fast
         AI::get_attacks_eval(search_result, w);
         AI::get_candidate_eval(search_result, Eval::FAST_WEIGHT);
-        // return AI::build_attack(search_result, field, data, [&] (Search::Attack& attack) {
-        //     return attack.score + data.bonus + data.all_clear * 30 * data.target >= 2100;
-        // });
         return AI::build(search_result, field, 2100);
     }
 
     // Else, if our enemy's field is smaller than our's field a lot, then harass them
-    if (AI::get_small_field(enemy.field, field)) {
-        // printf("build harass small field\n");
-        // Trigger harassment
-        AI::get_attacks_eval(search_result, w);
-        AI::get_candidate_eval(search_result, Eval::FAST_WEIGHT);
-        return AI::build_attack(search_result, field, data, [&] (Search::Attack& attack) {
-            return attack.score + data.bonus + data.all_clear * 30 * data.target >= 1000;
-        });
-    }
-
-    // Active gaze
-    Chain::Score enemy_detect_highest;
-    Chain::Score enemy_detect_harass;
-    AI::get_gaze_field(enemy.field, enemy_detect_highest, enemy_detect_harass);
+    // if (AI::get_small_field(enemy.field, field)) {
+    //     printf("build harass small field\n");
+    //     // Trigger harassment
+    //     AI::get_attacks_eval(search_result, w);
+    //     AI::get_candidate_eval(search_result, Eval::FAST_WEIGHT);
+    //     return AI::build_attack(search_result, field, data, [&] (Search::Attack& attack) {
+    //         return attack.score + data.bonus + data.all_clear * 30 * data.target >= 1000;
+    //     });
+    // }
 
     // Try harass
     if (field.get_count() >= 42 && field.get_count() < 60) {
-        // printf("harass\n");
+        printf("harass\n");
         AI::get_attacks_eval(search_result, w);
         AI::get_candidate_eval(search_result, w);
         return AI::build_attack(search_result, field, data, [&] (Search::Attack& attack) {
@@ -504,12 +512,12 @@ void get_candidate_eval(Search::Result& search_result, Eval::Weight w)
 
                 auto& c = search_result.candidates[t_id];
 
-                c.eval_fast = Eval::evaluate(c.plan_fast.field, c.plan_fast.tear, w);
+                c.eval_fast = Eval::evaluate(c.plan_fast.field, c.plan_fast.tear, c.plan_fast.waste, w);
 
                 for (auto& p : c.plans) {
                     c.eval = std::max(
                         c.eval,
-                        Eval::evaluate(p.field, p.tear, w)
+                        Eval::evaluate(p.field, p.tear, p.waste, w)
                     );
                 }
             }
@@ -546,7 +554,7 @@ void get_attacks_eval(Search::Result& search_result, Eval::Weight w)
                 auto& c = search_result.candidates[t_id];
 
                 for (auto& attack : c.attacks) {
-                    attack.eval = Eval::evaluate(attack.result, 0, w);
+                    attack.eval = Eval::evaluate(attack.result, 0, 0, w);
                 }
             }
         });
@@ -612,29 +620,41 @@ std::vector<std::pair<Move::Placement, Search::Attack>> get_attacks_with_conditi
 
 i32 get_unburied_count(Field& field)
 {
-    auto enemy_mask = field.get_mask();
-    auto emeny_mask_empty = ~enemy_mask;
-    auto enemy_mask_color = enemy_mask & (~field.data[static_cast<i32>(Cell::Type::GARBAGE)]);
-    return (emeny_mask_empty | enemy_mask_color).get_mask_group(2, 11).get_count() - emeny_mask_empty.get_count();
+    auto mask = field.get_mask();
+    auto mask_empty = ~mask;
+    auto mask_color = mask & (~field.data[static_cast<i32>(Cell::Type::GARBAGE)]);
+    auto mask_above = (mask_empty | mask_color).get_mask_group(2, 11);
+    auto mask_unburied = mask_above & mask_color;
+
+    return mask_unburied.get_count();
 };
 
-bool get_garbage_obstruct(Field& field, std::vector<Cell::Pair>& queue)
+bool get_garbage_obstruct(Field& field, Chain::Score& detect_highest, Chain::Score& detect_harass)
 {
     i32 unburied_count = AI::get_unburied_count(field);
     i32 garbage_count = field.data[static_cast<i32>(Cell::Type::GARBAGE)].get_count();
+    i32 empty_count = (~field.get_mask()).get_mask_group(2, 11).get_count();
 
     if (garbage_count < 1) {
         return false;
     }
 
     return
+        (garbage_count >= 18) ||
         (garbage_count >= (field.get_count() / 2)) ||
-        (unburied_count <= field.get_count() / 2 && garbage_count >= 12);
+        (unburied_count < 16 && garbage_count >= 12) ||
+        (unburied_count <= garbage_count) ||
+        (garbage_count >= 12 && detect_highest.score <= 630);
 };
 
 bool get_small_field(Field& field, Field& other)
 {
-    return other.get_count() > field.get_count() * 2;
+    i32 field_count = (field.get_mask() & (~field.data[static_cast<i32>(Cell::Type::GARBAGE)])).get_count();
+    i32 other_count = (other.get_mask() & (~other.data[static_cast<i32>(Cell::Type::GARBAGE)])).get_count();
+
+    return
+        (other_count > field_count * 2) ||
+        (other_count >= 30 && field_count <= 12);
 };
 
 bool get_bad_field(Field& field)
@@ -649,9 +669,44 @@ bool get_bad_field(Field& field)
 
 bool get_can_receive_garbage(Field& field, Enemy& enemy)
 {
-    if (enemy.attack > 12) {
-        return false;
-    }
+    // if (enemy.attack > 12) {
+    //     return false;
+    // }
+
+    // if (field.get_height(2) >= 10) {
+    //     return false;
+    // }
+
+    // auto count = field.get_count();
+
+    // if (count > 56) {
+    //     return false;
+    // }
+
+    // if (field.data[static_cast<i32>(Cell::Type::GARBAGE)].get_count() >= 9) {
+    //     return false;
+    // }
+
+    // if (enemy.attack <= 3) {
+    //     return true;
+    // }
+
+    // u8 heights[6];
+    // field.get_heights(heights);
+
+    // auto height_diff = *std::max_element(heights, heights + 6) - *std::max_element(heights, heights + 6);
+    // if (height_diff <= 1) {
+    //     return false;
+    // }
+
+    // if (count < 30) {
+    //     return enemy.attack <= 9;
+    // }
+    // else if (count < 48) {
+    //     return enemy.attack <= 6;
+    // }
+
+    // return false;
 
     if (field.get_height(2) >= 10) {
         return false;
@@ -659,34 +714,13 @@ bool get_can_receive_garbage(Field& field, Enemy& enemy)
 
     auto count = field.get_count();
 
-    if (count > 56) {
-        return false;
-    }
-
-    if (AI::get_small_field(enemy.field, field) || AI::get_garbage_obstruct(enemy.field, enemy.queue)) {
-        return false;
-    }
-
-    if (field.data[static_cast<i32>(Cell::Type::GARBAGE)].get_count() >= 6) {
-        return false;
-    }
-
-    if (enemy.attack <= 3) {
-        return true;
-    }
-
-    u8 heights[6];
-    field.get_heights(heights);
-
-    auto height_diff = *std::max_element(heights, heights + 6) - *std::max_element(heights, heights + 6);
-    if (height_diff <= 1) {
-        return false;
-    }
-
-    if (count < 30) {
+    if (count <= 30) {
         return enemy.attack <= 9;
     }
-    else if (count < 48) {
+    else if (count <= 48) {
+        return enemy.attack <= 6;
+    }
+    else if (count <= 54) {
         return enemy.attack <= 4;
     }
 

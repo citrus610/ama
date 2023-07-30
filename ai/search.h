@@ -24,6 +24,7 @@ struct Node
     i32 score = 0;
     i32 frame = 0;
     i32 tear = 0;
+    i32 waste = 0;
 };
 
 struct Candidate

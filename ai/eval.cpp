@@ -3,12 +3,14 @@
 namespace Eval
 {
 
-i32 evaluate(Field& field, u8 tear, Weight& w)
+i32 evaluate(Field& field, i32 tear, i32 waste, Weight& w)
 {
     i32 result = 0;
 
     u8 heights[6];
     field.get_heights(heights);
+
+    i32 field_count = field.get_count();
 
     i32 detect = 0;
     Detect::detect(field, [&] (Detect::Result detect_result) {
@@ -19,7 +21,16 @@ i32 evaluate(Field& field, u8 tear, Weight& w)
         score += detect_result.score.height * w.chain_height;
         score += detect_result.score.needed * w.chain_needed;
 
-        const i32 x_coef[6] = { 0, 2, 1, -1, -2, -3};
+        // const i32 x_coef_lo[6] = { 0, 2, 1, -1, -2, -3 };
+        // const i32 x_coef_hi[6] = { -3, -2, -1, 0, 2, 0 };
+        // if (field_count >= 48) {
+        //     score += x_coef_hi[detect_result.score.x] * w.chain_x;
+        // }
+        // else {
+        //     score += x_coef_lo[detect_result.score.x] * w.chain_x;
+        // }
+
+        const i32 x_coef[6] = { 0, 2, 1, -1, -2, -3 };
         score += x_coef[detect_result.score.x] * w.chain_x;
 
         detect = std::max(detect, score);
@@ -28,11 +39,11 @@ i32 evaluate(Field& field, u8 tear, Weight& w)
 
     i32 u = 0;
     i32 coef[6] = { 2, 0, 0, 0, 0, 2 };
-    if (field.get_count() >= 36) {
+    if (field_count >= 36) {
         coef[0] = 4;
         coef[1] = 2;
-        coef[4] = 2;
-        coef[5] = 4;
+        // coef[4] = 2;
+        // coef[5] = 4;
     }
     auto max_height_mid = std::max(heights[2], heights[3]);
     for (i32 i = 0; i < 6; ++i) {
@@ -90,7 +101,7 @@ i32 evaluate(Field& field, u8 tear, Weight& w)
         //     }
         // }
 
-        // i32 gtr = Form::evaluate(field, heights, Form::GTR1());
+        // i32 gtr = Form::evaluate(field, heights, Form::DEFAULT());
 
         i32 gtr = -100;
         for (i32 i = 0; i < 2; ++i) {
@@ -107,6 +118,8 @@ i32 evaluate(Field& field, u8 tear, Weight& w)
     }
 
     result += tear * w.tear;
+
+    result += waste * w.waste;
 
     return result;
 };

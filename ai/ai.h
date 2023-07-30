@@ -46,7 +46,7 @@ std::vector<std::pair<Move::Placement, Search::Attack>> get_attacks_with_conditi
 
 i32 get_unburied_count(Field& field);
 
-bool get_garbage_obstruct(Field& field, std::vector<Cell::Pair>& queue);
+bool get_garbage_obstruct(Field& field, Chain::Score& detect_highest, Chain::Score& detect_harass);
 
 bool get_small_field(Field& field, Field& other);
 

@@ -19,7 +19,8 @@ Result search(
         .field = field,
         .score = 0,
         .frame = 0,
-        .tear = 0
+        .tear = 0,
+        .waste = 0
     };
 
     auto placements = Move::generate(field, queue[0].first == queue[0].second);
@@ -82,6 +83,7 @@ Result search(
                 child.score += chain.score;
                 child.frame += root.field.get_drop_pair_frame(placement.x, placement.r) + chain.count * 2;
                 child.tear += root.field.get_drop_pair_frame(placement.x, placement.r) - 1;
+                child.waste += chain.count;
 
                 candidate.plan_fast = child;
 
@@ -150,6 +152,7 @@ void dfs(
         child.score += chain.score;
         child.frame += node.field.get_drop_pair_frame(placements[i].x, placements[i].r) + chain.count * 2;
         child.tear += node.field.get_drop_pair_frame(placements[i].x, placements[i].r) - 1;
+        child.waste += chain.count;
 
         if (depth + 1 < queue.size()) {
             Search::dfs(

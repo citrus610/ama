@@ -22,6 +22,7 @@
 #include <x86intrin.h>
 #include <condition_variable>
 #include <stdalign.h>
+#include <functional>
 #include "avec.h"
 
 typedef int8_t i8;
