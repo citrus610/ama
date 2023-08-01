@@ -34,9 +34,9 @@ Result think_1p(Field field, std::vector<Cell::Pair> queue, Eval::Weight w = Eva
 
 Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy enemy, Eval::Weight w = Eval::DEFAULT_WEIGHT);
 
-Result build(Search::Result& search_result, Field& field, i32 trigger_score);
+Result build(Search::Result& search_result, Field& field, i32 trigger_score, bool all_clear = true);
 
-Result build_attack(Search::Result& search_result, Field& field, Data data, std::function<bool(Search::Attack&)> condition);
+Result build_attack(Search::Result& search_result, Field& field, Data data, std::function<bool(Search::Attack&)> condition, bool all_clear = true);
 
 void get_candidate_eval(Search::Result& search_result, Eval::Weight w);
 

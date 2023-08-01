@@ -18,30 +18,32 @@ Result think_1p(Field field, std::vector<Cell::Pair> queue, Eval::Weight w, i32 
     return AI::build(search_result, field, trigger_score);
 };
 
-Result build(Search::Result& search_result, Field& field, i32 trigger_score)
+Result build(Search::Result& search_result, Field& field, i32 trigger_score, bool all_clear)
 {
     // All clear
 #ifdef TUNER
 #else
-    auto all_clear_attacks = AI::get_attacks_with_condition(search_result, [] (Search::Attack& attack) {
-        return attack.frame <= 4 && attack.count <= 4 && attack.all_clear;
-    });
+    if (all_clear) {
+        auto all_clear_attacks = AI::get_attacks_with_condition(search_result, [] (Search::Attack& attack) {
+            return attack.frame <= 4 && attack.count <= 4 && attack.all_clear;
+        });
 
-    if (!all_clear_attacks.empty()) {
-        std::sort(
-            all_clear_attacks.begin(),
-            all_clear_attacks.end(),
-            [&] (const std::pair<Move::Placement, Search::Attack>& a, const std::pair<Move::Placement, Search::Attack>& b) {
-                if (a.second.score == b.second.score) {
-                    return a.second.frame < b.second.frame;
+        if (!all_clear_attacks.empty()) {
+            std::sort(
+                all_clear_attacks.begin(),
+                all_clear_attacks.end(),
+                [&] (const std::pair<Move::Placement, Search::Attack>& a, const std::pair<Move::Placement, Search::Attack>& b) {
+                    if (a.second.score == b.second.score) {
+                        return a.second.frame < b.second.frame;
+                    }
+                    return a.second.score > b.second.score;
                 }
-                return a.second.score > b.second.score;
-            }
-        );
-        return Result {
-            .placement = all_clear_attacks[0].first,
-            .eval = 0,
-        };
+            );
+            return Result {
+                .placement = all_clear_attacks[0].first,
+                .eval = 0,
+            };
+        }
     }
 #endif
 
@@ -120,29 +122,31 @@ Result build(Search::Result& search_result, Field& field, i32 trigger_score)
     };
 };
 
-Result build_attack(Search::Result& search_result, Field& field, Data data, std::function<bool(Search::Attack&)> condition)
+Result build_attack(Search::Result& search_result, Field& field, Data data, std::function<bool(Search::Attack&)> condition, bool all_clear)
 {
     // Trigger all clear
-    auto all_clear_attacks = AI::get_attacks_with_condition(search_result, [] (Search::Attack& attack) {
-        return attack.frame <= 4 && attack.count <= 4 && attack.all_clear;
-    });
+    if (all_clear) {
+        auto all_clear_attacks = AI::get_attacks_with_condition(search_result, [] (Search::Attack& attack) {
+            return attack.frame <= 4 && attack.count <= 4 && attack.all_clear;
+        });
 
-    if (!all_clear_attacks.empty()) {
-        std::sort(
-            all_clear_attacks.begin(),
-            all_clear_attacks.end(),
-            [&] (const std::pair<Move::Placement, Search::Attack>& a, const std::pair<Move::Placement, Search::Attack>& b) {
-                if (a.second.score == b.second.score) {
-                    return a.second.frame < b.second.frame;
+        if (!all_clear_attacks.empty()) {
+            std::sort(
+                all_clear_attacks.begin(),
+                all_clear_attacks.end(),
+                [&] (const std::pair<Move::Placement, Search::Attack>& a, const std::pair<Move::Placement, Search::Attack>& b) {
+                    if (a.second.score == b.second.score) {
+                        return a.second.frame < b.second.frame;
+                    }
+                    return a.second.score > b.second.score;
                 }
-                return a.second.score > b.second.score;
-            }
-        );
-        
-        return Result {
-            .placement = all_clear_attacks[0].first,
-            .eval = 0,
-        };
+            );
+            
+            return Result {
+                .placement = all_clear_attacks[0].first,
+                .eval = 0,
+            };
+        }
     }
 
     // Trigger best attack
@@ -339,7 +343,7 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
                 weight_build = w;
             }
             AI::get_candidate_eval(search_result, weight_build);
-            return AI::build(search_result, field, 71000);
+            return AI::build(search_result, field, 71000, false);
         }
         else {
             // Return the enemy's attack with the biggest chain if:
@@ -431,9 +435,14 @@ Result think_2p(Field field, std::vector<Cell::Pair> queue, Data data, Enemy ene
     if (AI::get_garbage_obstruct(enemy.field, enemy_detect_highest, enemy_detect_harass)) {
         printf("gb kill\n");
         // Build fast and trigger chain fast
-        AI::get_attacks_eval(search_result, w);
+        AI::get_attacks_eval(search_result, Eval::FAST_WEIGHT);
         AI::get_candidate_eval(search_result, Eval::FAST_WEIGHT);
-        return AI::build(search_result, field, 2100);
+        // return AI::build(search_result, field, 2100);
+        return AI::build_attack(search_result, field, data, [&] (Search::Attack& attack) {
+            return
+                (attack.score + data.bonus + data.all_clear * 30 * data.target >= 2100) &&
+                (attack.frame <= 1);
+        });
     }
 
     // Else, if our enemy's field is smaller than our's field a lot, then harass them
