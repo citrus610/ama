@@ -175,6 +175,28 @@ void Field::drop_pair(i8 x, Direction::Type direction, Cell::Pair pair)
     }
 };
 
+void Field::drop_garbage(i32 count)
+{
+    i32 garbage_column = (1 << (count / 6)) - 1;
+
+    u8 heights[6];
+    this->get_heights(heights);
+
+    FieldBit garbage_add_mask;
+    garbage_add_mask.data = _mm_set_epi16(
+        0,
+        0,
+        garbage_column << heights[5],
+        garbage_column << heights[4],
+        garbage_column << heights[3],
+        garbage_column << heights[2],
+        garbage_column << heights[1],
+        garbage_column << heights[0]
+    );
+
+    this->data[static_cast<i32>(Cell::Type::GARBAGE)] = this->data[static_cast<i32>(Cell::Type::GARBAGE)] | garbage_add_mask.get_mask_13();
+};
+
 avec<Field, 19> Field::pop()
 {
     avec<Field, 19> result = avec<Field, 19>();

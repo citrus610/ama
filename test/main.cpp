@@ -113,6 +113,27 @@ std::vector<Cell::Pair> create_queue()
 
 int main()
 {
+    // Field f;
+    // const char c[13][7] = {
+    //     "......",
+    //     ".....R",
+    //     "......",
+    //     "......",
+    //     "......",
+    //     "......",
+    //     "......",
+    //     "......",
+    //     "......",
+    //     "R.....",
+    //     ".R....",
+    //     "...RR.",
+    //     "......",
+    // };
+    // f.from(c);
+
+    // f.drop_garbage(30);
+    // f.print();
+
     srand(uint32_t(time(NULL)));
 
     auto seed = time(NULL);

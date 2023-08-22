@@ -87,7 +87,7 @@ int main()
         tqueue.push_back(queue[(i + 2) % 128]);
 
         auto time_start = std::chrono::high_resolution_clock::now();
-        AI::Result ai_result = AI::think_1p(field, tqueue, heuristic);
+        AI::Result ai_result = AI::think_1p(field, tqueue, heuristic, 80000);
         auto time_stop = std::chrono::high_resolution_clock::now();
         time += std::chrono::duration_cast<std::chrono::milliseconds>(time_stop - time_start).count();
 

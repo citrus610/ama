@@ -57,12 +57,12 @@ void detect(Field& field, std::function<void(Result)> callback, i32 drop_max, i3
                 .plan = plan
             });
 
-            if (chain_score_raw.count == 1) {
+            if (chain_score_raw.count > 0 && chain_score_raw.count <= 8) {
                 for (u8 k = 0; k < Cell::COUNT - 1; ++k) {
                     for (i8 delta_x = 0; delta_x < 2; ++delta_x) {
                         i8 x_k = x + delta_x * 2 - 1;
                         
-                        if (x_k < 0 || x_k > 5 || heights[x_k] > 11 || (x_k == 2 && heights[x_k] > 10)) {
+                        if (x_k < 0 || x_k > 5 || heights[x_k] > 11 || (x_k == 2 && heights[x_k] > 10) || heights[x_k] == heights[x]) {
                             continue;
                         }
 

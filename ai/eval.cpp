@@ -20,36 +20,21 @@ i32 evaluate(Field& field, i32 tear, i32 waste, Weight& w)
         score += detect_result.score.chain.count * w.chain_count;
         score += detect_result.score.height * w.chain_height;
         score += detect_result.score.needed * w.chain_needed;
-
-        // const i32 x_coef_lo[6] = { 0, 2, 1, -1, -2, -3 };
-        // const i32 x_coef_hi[6] = { -3, -2, -1, 0, 2, 0 };
-        // if (field_count >= 48) {
-        //     score += x_coef_hi[detect_result.score.x] * w.chain_x;
-        // }
-        // else {
-        //     score += x_coef_lo[detect_result.score.x] * w.chain_x;
-        // }
-
-        const i32 x_coef[6] = { 0, 2, 1, -1, -2, -3 };
-        score += x_coef[detect_result.score.x] * w.chain_x;
+        score += w.chain_x[detect_result.score.x];
 
         detect = std::max(detect, score);
-    });
+    }, 3, 1);
     result += detect;
 
-    i32 u = 0;
-    i32 coef[6] = { 2, 0, 0, 0, 0, 2 };
-    if (field_count >= 36) {
-        coef[0] = 4;
-        coef[1] = 2;
-        // coef[4] = 2;
-        // coef[5] = 4;
+    i32 shape = 0;
+    auto shape_coef = w.shape_coef_lo;
+    if (field_count >= 30) {
+        shape_coef = w.shape_coef_hi;
     }
-    auto max_height_mid = std::max(heights[2], heights[3]);
     for (i32 i = 0; i < 6; ++i) {
-        u += std::abs(heights[i] - max_height_mid - coef[i]);
+        shape += std::abs(i32(heights[i]) - i32(heights[2]) - shape_coef[i]);
     }
-    result += u * w.u;
+    result += shape * w.shape;
 
     result += field.data[static_cast<u8>(Cell::Type::GARBAGE)].get_count() * w.nuisance;
 
@@ -59,7 +44,6 @@ i32 evaluate(Field& field, i32 tear, i32 waste, Weight& w)
     i32 link_hor_3 = 0;
     i32 link_ver_2 = 0;
     i32 link_ver_3 = 0;
-    i32 link_mid = 0;
     for (u8 p = 0; p < Cell::COUNT - 1; ++p) {
         FieldBit m12 = field.data[p].get_mask_12();
 
@@ -80,20 +64,17 @@ i32 evaluate(Field& field, i32 tear, i32 waste, Weight& w)
         ver_2 -= ver_3;
         link_ver_2 += ver_2;
         link_ver_3 += ver_3;
-
-        hor.data = m12.data & _mm_set_epi16(0, 0, 0, 0, 0xffff, 0xffff, 0, 0);
-        hor.data = _mm_slli_si128(hor.data, 2) & hor.data;
-        link_mid += hor.get_count();
     }
     result += link_hor_2 * w.link_hor_2;
     result += link_hor_3 * w.link_hor_3;
     result += link_ver_2 * w.link_ver_2;
     result += link_ver_3 * w.link_ver_3;
-    result += link_mid * w.link_mid;
 
     if (w.form != 0) {
-        // i32 gtr = -100;
-        // for (i32 i = 0; i < 5; ++i) {
+        i32 gtr = Form::evaluate(field, heights, Form::DEFAULT());
+
+        // i32 gtr = -10;
+        // for (i32 i = 0; i < 2; ++i) {
         //     gtr = Form::evaluate(field, heights, Form::GTR[i]);
 
         //     if (gtr >= 0) {
@@ -101,20 +82,11 @@ i32 evaluate(Field& field, i32 tear, i32 waste, Weight& w)
         //     }
         // }
 
-        // i32 gtr = Form::evaluate(field, heights, Form::DEFAULT());
+        // if (gtr >= 0) {
+        //     result += gtr * w.form;
+        // }
 
-        i32 gtr = -100;
-        for (i32 i = 0; i < 2; ++i) {
-            gtr = Form::evaluate(field, heights, Form::GTR[i]);
-
-            if (gtr >= 0) {
-                break;
-            }
-        }
-
-        if (gtr >= 0) {
-            result += gtr * w.form;
-        }
+        result += gtr * w.form;
     }
 
     result += tear * w.tear;

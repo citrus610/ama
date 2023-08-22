@@ -31,6 +31,7 @@ public:
 public:
     void drop_puyo(i8 x, Cell::Type cell);
     void drop_pair(i8 x, Direction::Type direction, Cell::Pair pair);
+    void drop_garbage(i32 count);
 public:
     avec<Field, 19> pop();
 public:

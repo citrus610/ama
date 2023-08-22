@@ -6,7 +6,7 @@ namespace Form
 i32 evaluate(Field& field, u8 height[6], const Data& pattern)
 {
     i32 result = 0;
-    const i32 error = -10;
+    const i32 error = -100;
 
     for (i8 x0 = 0; x0 < 6; ++x0) {
         for (i8 y0 = 0; y0 < HEIGHT; ++y0) {
