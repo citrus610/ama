@@ -6,10 +6,10 @@ Ama is an AI created to play Puyo Puyo Tsu 1P and PVP. This project aims to reac
 
 ## Features
 - Efficient bitfield implementation inspired by [puyoai](https://github.com/puyoai/puyoai)
-- Uses GTR as the default chain form. To disable GTR, change the `form` parameter in `config.json` to 0.
+- Uses human-like forms as the default chain forms, such as GTR, Meri, etc. To disable human-like chains, set the `form` parameter in `config.json` to 0.
 - Implements the ability to gaze the opponent's field:
   - Can harass the opponent at the right time.
-  - Can or try to return the attacks from the opponent.
+  - Can return the attacks from the opponent.
 - Implements high recovery mode that can build chain very fast.
 - Decent chain building ablility.
 
