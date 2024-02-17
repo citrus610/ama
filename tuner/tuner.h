@@ -8,10 +8,12 @@ namespace Tuner
 struct SaveData {
     Eval::Weight w;
     i32 count;
+    i32 frame;
     i32 score;
+    i32 unchange;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SaveData, w, count, score)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SaveData, w, count, frame, score, unchange)
 
 void save(std::string id, SaveData s)
 {
@@ -23,16 +25,29 @@ void save(std::string id, SaveData s)
     o.close();
 };
 
+void load(std::string id, SaveData& s)
+{
+    std::string name = std::string("data/") + id + std::string(".json");
+    std::ifstream file;
+    file.open("config.json");
+    json js;
+    file >> js;
+    file.close();
+    from_json(js, s);
+};
+
 Eval::Weight constrain(Eval::Weight w)
 {
     #define CONSTRAIN_POSITIVE(p) w.p = std::max(0, w.p);
     #define CONSTRAIN_NEGATIVE(p) w.p = std::min(0, w.p);
 
     CONSTRAIN_POSITIVE(y);
+    CONSTRAIN_POSITIVE(chi);
 
     CONSTRAIN_NEGATIVE(need);
+    CONSTRAIN_NEGATIVE(key);
+    CONSTRAIN_NEGATIVE(key_s);
     CONSTRAIN_NEGATIVE(shape);
-    CONSTRAIN_NEGATIVE(link_no);
     CONSTRAIN_NEGATIVE(tear);
     CONSTRAIN_NEGATIVE(waste);
 
@@ -44,21 +59,38 @@ std::pair<Eval::Weight, Eval::Weight> randomize(Eval::Weight w, std::optional<i3
     auto w1 = w;
     auto w2 = w;
 
-    i32 rng = idx.value_or(rand() % 6);
+    #define PARAM_COUNT 8
 
-    i32* param_ptr[] = {
+    i32 rng = idx.value_or(rand() % PARAM_COUNT);
+
+    i32* param_ptr[PARAM_COUNT] = {
+        // &w.chain,
+        // &w.score,
         &w.y,
         &w.need,
+        &w.key,
+        &w.key_s,
+        &w.chi,
         &w.shape,
-        &w.link_no,
+        // &w.u,
+        // &w.form,
+        // &w.link_no,
+        // &w.side,
+        // &w.nuisance,
         &w.tear,
         &w.waste
     };
 
+    auto param_count = sizeof(*__countof_helper(param_ptr));
+
     auto param = param_ptr[rng];
     auto param_pre = *param;
 
-    auto value = 1 + (rand() % 10);
+    auto delta = 25;
+    if (rng == 5) delta = 15;
+    // if (rng == 6) delta = 15;
+
+    auto value = 1 + (rand() % delta);
 
     *param += value;
     w1 = constrain(w);
@@ -70,11 +102,15 @@ std::pair<Eval::Weight, Eval::Weight> randomize(Eval::Weight w, std::optional<i3
     return { w1, w2 };
 };
 
-i32 match(Eval::Weight w, Eval::Weight w1, Eval::Weight w2, i32 result[6])
+i32 match(Eval::Weight w, Eval::Weight w1, Eval::Weight w2, i32 result[9])
 {
     std::atomic<i32> count = 0;
     std::atomic<i32> count1 = 0;
     std::atomic<i32> count2 = 0;
+
+    std::atomic<i32> frame = 0;
+    std::atomic<i32> frame1 = 0;
+    std::atomic<i32> frame2 = 0;
 
     std::atomic<i32> score = 0;
     std::atomic<i32> score1 = 0;
@@ -82,7 +118,7 @@ i32 match(Eval::Weight w, Eval::Weight w1, Eval::Weight w2, i32 result[6])
 
     std::vector<Cell::Pair> queues[100];
     for (i32 i = 0; i < 100; ++i) {
-        queues[i] = create_queue();
+        queues[i] = Cell::create_queue(rand() & 0xFFFF);
     }
 
     std::vector<std::thread> threads;
@@ -98,19 +134,22 @@ i32 match(Eval::Weight w, Eval::Weight w1, Eval::Weight w2, i32 result[6])
                 auto sim1 = simulate(w1, queue);
                 auto sim2 = simulate(w2, queue);
 
-                if (sim >= 78000) {
+                if (sim.first >= 78000) {
                     count += 1;
-                    score += sim;
+                    frame += sim.second;
+                    score += sim.first;
                 }
 
-                if (sim1 >= 78000) {
+                if (sim1.first >= 78000) {
                     count1 += 1;
-                    score1 += sim1;
+                    frame1 += sim1.second;
+                    score1 += sim1.first;
                 }
 
-                if (sim2 >= 78000) {
+                if (sim2.first >= 78000) {
                     count2 += 1;
-                    score2 += sim2;
+                    frame2 += sim2.second;
+                    score2 += sim2.first;
                 }
 
                 progress += 1;
@@ -127,6 +166,7 @@ i32 match(Eval::Weight w, Eval::Weight w1, Eval::Weight w2, i32 result[6])
 
     struct Score {
         i32 count = 0;
+        i32 frame = 0;
         i32 score = 0;
 
         bool operator < (Score other)  {
@@ -134,38 +174,39 @@ i32 match(Eval::Weight w, Eval::Weight w1, Eval::Weight w2, i32 result[6])
                 return this->count < other.count;
             }
 
+            if (this->frame != other.frame) {
+                return this->frame > other.frame;
+            }
+
             return this->score < other.score;
         };
     };
 
-    Score s = { count.load(), score.load() };
-    Score s1 = { count1.load(), score1.load() };
-    Score s2 = { count2.load(), score2.load() };
+    Score s = { .count = count.load(), .frame = frame.load(), .score = score.load() };
+    Score s1 = { .count = count1.load(), .frame = frame1.load(), .score = score1.load() };
+    Score s2 = { .count = count2.load(), .frame = frame2.load(), .score = score2.load() };
 
     result[0] = count.load();
-    result[1] = score.load();
-    result[2] = count1.load();
-    result[3] = score1.load();
-    result[4] = count2.load();
-    result[5] = score2.load();
+    result[1] = frame.load();
+    result[2] = score.load();
 
-    if (s1 < s && s2 < s) {
-        return 0;
-    }
+    result[3] = count1.load();
+    result[4] = frame1.load();
+    result[5] = score1.load();
 
-    if (s2 < s && s < s1) {
+    result[6] = count2.load();
+    result[7] = frame2.load();
+    result[8] = score2.load();
+
+    if (s < s1 || s < s2) {
+        if (s1 < s2) {
+            return -1;
+        }
+
         return 1;
     }
-
-    if (s1 < s && s < s2) {
-        return -1;
-    }
-
-    if (s1 < s2) {
-        return -1;
-    }
-
-    return 1;
+    
+    return 0;
 };
 
 static void print_w(Eval::Weight w)
@@ -174,8 +215,10 @@ static void print_w(Eval::Weight w)
 
     PRW(y);
     PRW(need);
+    PRW(key);
+    PRW(key_s);
+    PRW(chi);
     PRW(shape);
-    PRW(link_no);
     PRW(tear);
     PRW(waste);
 };
@@ -193,14 +236,22 @@ static void run(Eval::Weight w)
         auto randw = Tuner::randomize(w, pidx);
 
         pidx += 1;
-        pidx = pidx % 6;
+        pidx = pidx % PARAM_COUNT;
 
         auto w1 = randw.first;
         auto w2 = randw.second;
 
-        i32 result[6] = { 0 };
+        i32 result[9] = { 0 };
 
         auto m = Tuner::match(w, w1, w2, result);
+
+        system("cls");
+        printf("id: %d\n\n", id);
+        printf("w0: %d - %d - %d\n", result[0], result[1] / result[0], result[2] / result[0]);
+        printf("w+: %d - %d - %d\n", result[3], result[4] / result[3], result[5] / result[3]);
+        printf("w-: %d - %d - %d\n", result[6], result[7] / result[6], result[8] / result[6]);
+        printf("\n");
+        Tuner::print_w(w);
 
         if (m == 1) {
             unchange = 0;
@@ -213,39 +264,42 @@ static void run(Eval::Weight w)
         else {
             unchange += 1;
 
-            if (unchange >= 10) {
+            if (unchange >= PARAM_COUNT) {
                 break;
             }
+
+            // if (id > 0) {
+            //     SaveData save_data;
+
+            //     Tuner::load(std::to_string(id - 1), save_data);
+            //     save_data.unchange = unchange;
+            //     Tuner::save(std::to_string(id - 1), save_data);
+            // }
 
             continue;
         }
 
-        // Tuner::save(std::to_string(id), w);
         auto save_data = SaveData{
             .w = w,
             .count = 0,
+            .frame = 0,
             .score = 0,
+            .unchange = 0,
         };
 
         if (m == 1) {
-            save_data.count = result[2];
-            save_data.score = result[3] / result[2];
+            save_data.count = result[3];
+            save_data.frame = result[4] / result[3];
+            save_data.score = result[5] / result[3];
         }
 
         if (m == -1) {
-            save_data.count = result[4];
-            save_data.score = result[5] / result[4];
+            save_data.count = result[6];
+            save_data.frame = result[7] / result[6];
+            save_data.score = result[8] / result[6];
         }
 
         Tuner::save(std::to_string(id), save_data);
-
-        system("cls");
-        printf("id: %d\n\n", id);
-        printf("w0: %d - %d\n", result[0], result[1] / result[0]);
-        printf("w+: %d - %d\n", result[2], result[3] / result[2]);
-        printf("w-: %d - %d\n", result[4], result[5] / result[4]);
-        printf("\n");
-        Tuner::print_w(w);
 
         id += 1;
     }
