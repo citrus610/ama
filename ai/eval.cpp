@@ -122,20 +122,32 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
         result += u * w.u;
     }
 
-    i32 link_no = 0;
+    i32 link_2 = 0;
+    i32 link_3 = 0;
     for (u8 p = 0; p < Cell::COUNT - 1; ++p) {
-        FieldBit m12 = field.data[p].get_mask_12();
+        __m128i m12 = field.data[p].get_mask_12().data;
 
-        FieldBit ln;
-        ln.data = 
-            (~_mm_slli_si128(m12.data, 2)) &
-            (~_mm_srli_si128(m12.data, 2)) &
-            (~_mm_slli_epi16(m12.data, 1)) &
-            (~_mm_srli_epi16(m12.data, 1)) &
-            m12.data;
-        link_no += ln.get_count();
+        __m128i r = _mm_srli_si128(m12, 2) & m12;
+        __m128i l = _mm_slli_si128(m12, 2) & m12;
+        __m128i u = _mm_srli_epi16(m12, 1) & m12;
+        __m128i d = _mm_slli_epi16(m12, 1) & m12;
+
+        __m128i ud_and = u & d;
+        __m128i lr_and = l & r;
+        __m128i ud_or = u | d;
+        __m128i lr_or = l | r;
+
+        FieldBit l3;
+        FieldBit l2;
+
+        l3.data = (ud_or & lr_or) | ud_and | lr_and;
+        l2.data = _mm_andnot_si128(l3.get_expand().data, u | l);
+
+        link_2 += l2.get_count();
+        link_3 += l3.get_count();
     }
-    result += link_no * w.link_no;
+    result += link_2 * w.link_2;
+    result += link_3 * w.link_3;
 
     result += field.data[static_cast<u8>(Cell::Type::GARBAGE)].get_count() * w.nuisance;
 

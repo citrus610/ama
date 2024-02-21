@@ -35,7 +35,8 @@ struct Weight
     i32 shape = 0;
     i32 u = 0;
     i32 form = 0;
-    i32 link_no = 0;
+    i32 link_2 = 0;
+    i32 link_3 = 0;
     i32 side = 0;
     i32 nuisance = 0;
 
@@ -58,7 +59,6 @@ constexpr Weight DEFAULT = {
     .shape = -33,
     .u = -100,
     .form = 100,
-    .link_no = -38,
     .side = 0,
     .nuisance = -200,
 
@@ -85,7 +85,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Weight,
     shape,
     u,
     form,
-    link_no,
+    link_2,
+    link_3,
     side,
     nuisance,
     tear,

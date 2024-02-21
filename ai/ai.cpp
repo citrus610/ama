@@ -203,7 +203,11 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                         }
 
                         if (a_enough > 0 && b_enough > 0) {
-                            return a.second.frame_real > b.second.frame_real;
+                            if (a.second.frame_real != b.second.frame_real) {
+                                return a.second.frame_real > b.second.frame_real;
+                            }
+
+                            return a.second.score < b.second.score;
                         }
 
                         if (a.second.score != b.second.score) {
@@ -603,7 +607,7 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
             }
         }
 
-        if (attack_max < 78000) {
+        if (attack_max < AI::TRIGGER_DEFAULT) {
             std::vector<std::pair<Move::Placement, Attack::Data>> attacks_harass;
 
             auto classify_attack = [&] (Move::Placement placement, Attack::Data& attack) {
@@ -633,7 +637,7 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                 }
 
                 // if (attack_send >= enemy_harass_max || attack_send >= enemy_gaze.main.score) {
-                if (attack_send >= enemy_harass_max) {
+                if (attack_send >= enemy_harass_fast_max) {
                     attacks_harass.push_back({ placement, attack });
                 }
             };
@@ -657,8 +661,8 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                             return a.second.count > b.second.count;
                         }
 
-                        i32 a_enough = (a.second.score + self.bonus_point) / target_point >= enemy_harass_max + 6;
-                        i32 b_enough = (b.second.score + self.bonus_point) / target_point >= enemy_harass_max + 6;
+                        i32 a_enough = (a.second.score + self.bonus_point) / target_point >= enemy_harass_fast_max + 6;
+                        i32 b_enough = (b.second.score + self.bonus_point) / target_point >= enemy_harass_fast_max + 6;
 
                         if (a_enough != b_enough) {
                             return a_enough < b_enough;
@@ -683,7 +687,7 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                 };
             }
 
-            if (enemy_harass_max >= 12) {
+            if (enemy_harass_fast_max >= 12) {
                 if (bsearch.empty()) {
                     auto b_result = Build::search(self.field, { self.queue[0], self.queue[1] }, w[Build::Type::HARASS]);
                     return AI::build(b_result, asearch);

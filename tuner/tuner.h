@@ -29,7 +29,7 @@ void load(std::string id, SaveData& s)
 {
     std::string name = std::string("data/") + id + std::string(".json");
     std::ifstream file;
-    file.open("config.json");
+    file.open(name);
     json js;
     file >> js;
     file.close();
@@ -43,6 +43,8 @@ Eval::Weight constrain(Eval::Weight w)
 
     CONSTRAIN_POSITIVE(y);
     CONSTRAIN_POSITIVE(chi);
+    CONSTRAIN_POSITIVE(link_2);
+    CONSTRAIN_POSITIVE(link_3);
 
     CONSTRAIN_NEGATIVE(need);
     CONSTRAIN_NEGATIVE(key);
@@ -59,7 +61,7 @@ std::pair<Eval::Weight, Eval::Weight> randomize(Eval::Weight w, std::optional<i3
     auto w1 = w;
     auto w2 = w;
 
-    #define PARAM_COUNT 8
+    #define PARAM_COUNT 10
 
     i32 rng = idx.value_or(rand() % PARAM_COUNT);
 
@@ -74,7 +76,8 @@ std::pair<Eval::Weight, Eval::Weight> randomize(Eval::Weight w, std::optional<i3
         &w.shape,
         // &w.u,
         // &w.form,
-        // &w.link_no,
+        &w.link_2,
+        &w.link_3,
         // &w.side,
         // &w.nuisance,
         &w.tear,
@@ -87,8 +90,8 @@ std::pair<Eval::Weight, Eval::Weight> randomize(Eval::Weight w, std::optional<i3
     auto param_pre = *param;
 
     auto delta = 25;
-    if (rng == 5) delta = 15;
     // if (rng == 6) delta = 15;
+    // if (rng == 7) delta = 15;
 
     auto value = 1 + (rand() % delta);
 
@@ -134,19 +137,19 @@ i32 match(Eval::Weight w, Eval::Weight w1, Eval::Weight w2, i32 result[9])
                 auto sim1 = simulate(w1, queue);
                 auto sim2 = simulate(w2, queue);
 
-                if (sim.first >= 78000) {
+                if (sim.first >= AI::TRIGGER_DEFAULT) {
                     count += 1;
                     frame += sim.second;
                     score += sim.first;
                 }
 
-                if (sim1.first >= 78000) {
+                if (sim1.first >= AI::TRIGGER_DEFAULT) {
                     count1 += 1;
                     frame1 += sim1.second;
                     score1 += sim1.first;
                 }
 
-                if (sim2.first >= 78000) {
+                if (sim2.first >= AI::TRIGGER_DEFAULT) {
                     count2 += 1;
                     frame2 += sim2.second;
                     score2 += sim2.first;
@@ -218,6 +221,8 @@ static void print_w(Eval::Weight w)
     PRW(key);
     PRW(key_s);
     PRW(chi);
+    PRW(link_2);
+    PRW(link_3);
     PRW(shape);
     PRW(tear);
     PRW(waste);
@@ -268,13 +273,13 @@ static void run(Eval::Weight w)
                 break;
             }
 
-            // if (id > 0) {
-            //     SaveData save_data;
+            if (id > 0) {
+                SaveData save_data;
 
-            //     Tuner::load(std::to_string(id - 1), save_data);
-            //     save_data.unchange = unchange;
-            //     Tuner::save(std::to_string(id - 1), save_data);
-            // }
+                Tuner::load(std::to_string(id - 1), save_data);
+                save_data.unchange = unchange;
+                Tuner::save(std::to_string(id - 1), save_data);
+            }
 
             continue;
         }

@@ -32,7 +32,7 @@ static std::pair<i32, i32> simulate(Eval::Weight w, std::vector<Cell::Pair> queu
         if (chain.score > 0) {
             score = std::max(score, chain.score);
 
-            if (chain.score >= 78000) {
+            if (chain.score >= AI::TRIGGER_DEFAULT) {
                 break;
             }
         }
