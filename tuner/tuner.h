@@ -42,13 +42,11 @@ Eval::Weight constrain(Eval::Weight w)
     #define CONSTRAIN_NEGATIVE(p) w.p = std::min(0, w.p);
 
     CONSTRAIN_POSITIVE(y);
-    CONSTRAIN_POSITIVE(chi);
-    CONSTRAIN_POSITIVE(link_2);
-    CONSTRAIN_POSITIVE(link_3);
+    CONSTRAIN_POSITIVE(link_h);
 
-    CONSTRAIN_NEGATIVE(need);
     CONSTRAIN_NEGATIVE(key);
     CONSTRAIN_NEGATIVE(key_s);
+    CONSTRAIN_NEGATIVE(need);
     CONSTRAIN_NEGATIVE(shape);
     CONSTRAIN_NEGATIVE(tear);
     CONSTRAIN_NEGATIVE(waste);
@@ -61,25 +59,17 @@ std::pair<Eval::Weight, Eval::Weight> randomize(Eval::Weight w, std::optional<i3
     auto w1 = w;
     auto w2 = w;
 
-    #define PARAM_COUNT 10
+    #define PARAM_COUNT 8
 
     i32 rng = idx.value_or(rand() % PARAM_COUNT);
 
-    i32* param_ptr[PARAM_COUNT] = {
-        // &w.chain,
-        // &w.score,
+    i32* param_ptr[] = {
         &w.y,
-        &w.need,
         &w.key,
         &w.key_s,
-        &w.chi,
+        &w.need,
+        &w.link_h,
         &w.shape,
-        // &w.u,
-        // &w.form,
-        &w.link_2,
-        &w.link_3,
-        // &w.side,
-        // &w.nuisance,
         &w.tear,
         &w.waste
     };
@@ -89,11 +79,10 @@ std::pair<Eval::Weight, Eval::Weight> randomize(Eval::Weight w, std::optional<i3
     auto param = param_ptr[rng];
     auto param_pre = *param;
 
-    auto delta = 25;
-    // if (rng == 6) delta = 15;
-    // if (rng == 7) delta = 15;
+    auto delta = 20;
+    if (rng == 3) delta = 10;
 
-    auto value = 1 + (rand() % delta);
+    auto value = 2 + (rand() % delta);
 
     *param += value;
     w1 = constrain(w);
@@ -217,12 +206,10 @@ static void print_w(Eval::Weight w)
     #define PRW(p) printf("%s: %d\n", #p, w.p);
 
     PRW(y);
-    PRW(need);
     PRW(key);
     PRW(key_s);
-    PRW(chi);
-    PRW(link_2);
-    PRW(link_3);
+    PRW(need);
+    PRW(link_h);
     PRW(shape);
     PRW(tear);
     PRW(waste);

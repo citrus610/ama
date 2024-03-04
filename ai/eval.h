@@ -17,6 +17,7 @@ struct Result
 {
     i32 value = INT32_MIN;
     Field plan = Field();
+    i32 q = 0;
 };
 
 struct Weight
@@ -37,6 +38,7 @@ struct Weight
     i32 form = 0;
     i32 link_2 = 0;
     i32 link_3 = 0;
+    i32 link_h = 0;
     i32 side = 0;
     i32 nuisance = 0;
 
@@ -72,6 +74,10 @@ i32 get_shape(u8 heights[6]);
 
 i32 get_u(u8 heights[6]);
 
+void get_link(Field& field, i32& link_2, i32& link_3);
+
+i32 get_link_horizontal(Field& field);
+
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Weight,
     chain,
     score,
@@ -87,6 +93,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Weight,
     form,
     link_2,
     link_3,
+    link_h,
     side,
     nuisance,
     tear,

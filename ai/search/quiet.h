@@ -12,6 +12,7 @@ struct Result
     i32 x = 0;
     i32 depth = 0;
     Field plan;
+    Field remain;
 };
 
 void search(

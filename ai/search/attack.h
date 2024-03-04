@@ -2,7 +2,7 @@
 
 #include "../../core/core.h"
 #include "../move.h"
-#include "quiet.h"
+#include "../eval.h"
 
 namespace Attack
 {
@@ -54,5 +54,14 @@ void dfs(
     i32 depth,
     bool deep
 );
+
+static bool cmp_main(const Attack::Data& a, const Attack::Data& b)
+{
+    if (a.score != b.score) {
+        return a.score < b.score;
+    }
+
+    return a.frame_real > b.frame_real;
+};
 
 };

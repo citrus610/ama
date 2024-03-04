@@ -57,7 +57,15 @@ Result build(Build::Result& bsearch, Attack::Result& asearch, bool all_clear, i3
         attack_count += c.attacks.size();
     }
 
-    if (chain_score_max < trigger && !bsearch.candidates.empty()) {
+    i32 q_max = 0;
+
+    for (auto& c : bsearch.candidates) {
+        q_max = std::max(q_max, c.eval.q);
+    }
+
+    bool trigger_condition = (chain_score_max > q_max && chain_score_max > 10000) || chain_score_max > trigger;
+
+    if (!trigger_condition && !bsearch.candidates.empty()) {
         auto best = *std::max_element(
             bsearch.candidates.begin(),
             bsearch.candidates.end(),
@@ -78,7 +86,7 @@ Result build(Build::Result& bsearch, Attack::Result& asearch, bool all_clear, i3
     }
 
     if (attack_count > 0) {
-        std::pair<i32, Result> best = { 0, Result() };
+        std::pair<Attack::Data, Result> best = { Attack::Data(), Result() };
 
         for (auto& c : asearch.candidates) {
             if (c.attacks.empty()) {
@@ -87,8 +95,8 @@ Result build(Build::Result& bsearch, Attack::Result& asearch, bool all_clear, i3
 
             auto attack = c.attack_max;
 
-            if (best.first < attack.score) {
-                best.first = attack.score;
+            if (Attack::cmp_main(best.first, attack)) {
+                best.first = attack;
                 best.second.placement = c.placement;
                 best.second.plan = std::nullopt;
                 best.second.eval = attack.score;
@@ -687,7 +695,7 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                 };
             }
 
-            if (enemy_harass_fast_max >= 12) {
+            if (enemy_harass_fast_max >= 18) {
                 if (bsearch.empty()) {
                     auto b_result = Build::search(self.field, { self.queue[0], self.queue[1] }, w[Build::Type::HARASS]);
                     return AI::build(b_result, asearch);

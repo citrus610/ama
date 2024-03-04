@@ -151,7 +151,12 @@ Eval::Result dfs(Node& node, std::vector<Cell::Pair>& queue, Eval::Weight& w, i3
         }
 
         if (eval.value > result.value) {
-            result = eval;
+            result.value = eval.value;
+            result.plan = eval.plan;
+        }
+
+        if (eval.q > result.q) {
+            result.q = eval.q;
         }
     }
 

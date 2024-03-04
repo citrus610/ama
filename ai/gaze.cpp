@@ -107,7 +107,7 @@ i32 get_accept_limit(Field& field)
         result = 4;
     }
     else if (field_count > 30) {
-        if (field_count_left <= 12 && field.get_height(2) <= 2) {
+        if (field_count_left <= 12 && field.get_height(2) <= 4) {
             result = 12;
         }
         else {
@@ -115,7 +115,7 @@ i32 get_accept_limit(Field& field)
         }
     }
     else {
-        if (field_count_left <= 12 && field.get_height(2) <= 2) {
+        if (field_count_left <= 12 && field.get_height(2) <= 4) {
             result = 18;
         }
         else {

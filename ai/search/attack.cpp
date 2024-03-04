@@ -47,7 +47,7 @@ Result search(
                     .attack_max = Attack::Data(),
                     .attacks = std::vector<Attack::Data>(),
                     .attacks_ac = std::vector<Attack::Data>(),
-                    .attacks_detect = std::vector<Attack::Data>(),
+                    .attacks_detect = std::vector<Attack::Data>()
                 };
 
                 candidate.attacks.reserve(512);
@@ -157,13 +157,7 @@ void dfs(
             candidate.attack_max = std::max(
                 candidate.attack_max,
                 attack,
-                [] (const Attack::Data& a, const Attack::Data& b) {
-                    if (a.score != b.score) {
-                        return a.score < b.score;
-                    }
-
-                    return a.frame_real > b.frame_real;
-                }
+                Attack::cmp_main
             );
         }
 

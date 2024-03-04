@@ -10,7 +10,7 @@
 namespace AI
 {
 
-constexpr i32 TRIGGER_DEFAULT = 78000;
+constexpr i32 TRIGGER_DEFAULT = 80000;
 
 struct Result
 {

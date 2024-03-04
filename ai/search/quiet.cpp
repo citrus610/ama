@@ -52,7 +52,8 @@ void search(
                     .score = sim_chain.score,
                     .x = x,
                     .depth = 0,
-                    .plan = copy
+                    .plan = copy,
+                    .remain = sim
                 });
             }
 
@@ -139,7 +140,8 @@ void dfs(
                     .score = sim_chain.score,
                     .x = x_ban,
                     .depth = depth,
-                    .plan = copy
+                    .plan = copy,
+                    .remain = sim
                 });
 
                 if (depth > 1) {

@@ -15,6 +15,8 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
     i32 dub_2 = 0;
     i32 dub_3 = 0;
 
+    i32 q_max = 0;
+
     i32 qscore = INT32_MIN;
     Quiet::search(field, MAX_DEPTH, MAX_DROP, [&] (Quiet::Result q) {
         i32 score = 0;
@@ -26,6 +28,8 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
         if (q.chain == 3 && q.score >= 1680) {
             dub_3 += 1;
         }
+
+        q_max = std::max(q_max, q.score);
 
         u8 heights[6];
         q.plan.get_heights(heights);
@@ -124,30 +128,12 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
 
     i32 link_2 = 0;
     i32 link_3 = 0;
-    for (u8 p = 0; p < Cell::COUNT - 1; ++p) {
-        __m128i m12 = field.data[p].get_mask_12().data;
-
-        __m128i r = _mm_srli_si128(m12, 2) & m12;
-        __m128i l = _mm_slli_si128(m12, 2) & m12;
-        __m128i u = _mm_srli_epi16(m12, 1) & m12;
-        __m128i d = _mm_slli_epi16(m12, 1) & m12;
-
-        __m128i ud_and = u & d;
-        __m128i lr_and = l & r;
-        __m128i ud_or = u | d;
-        __m128i lr_or = l | r;
-
-        FieldBit l3;
-        FieldBit l2;
-
-        l3.data = (ud_or & lr_or) | ud_and | lr_and;
-        l2.data = _mm_andnot_si128(l3.get_expand().data, u | l);
-
-        link_2 += l2.get_count();
-        link_3 += l3.get_count();
-    }
+    Eval::get_link(field, link_2, link_3);
     result += link_2 * w.link_2;
     result += link_3 * w.link_3;
+
+    i32 link_h = Eval::get_link_horizontal(field);
+    result += link_h;
 
     result += field.data[static_cast<u8>(Cell::Type::GARBAGE)].get_count() * w.nuisance;
 
@@ -159,7 +145,8 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
 
     return Result {
         .value = result,
-        .plan = plan
+        .plan = plan,
+        .q = q_max
     };
 };
 
@@ -185,6 +172,51 @@ i32 get_u(u8 heights[6])
     u += std::max(0, i32(heights[3]) - i32(heights[4]));
 
     return u;
+};
+
+void get_link(Field& field, i32& link_2, i32& link_3)
+{
+    for (u8 p = 0; p < Cell::COUNT - 1; ++p) {
+        __m128i m12 = field.data[p].get_mask_12().data;
+
+        __m128i r = _mm_srli_si128(m12, 2) & m12;
+        __m128i l = _mm_slli_si128(m12, 2) & m12;
+        __m128i u = _mm_srli_epi16(m12, 1) & m12;
+        __m128i d = _mm_slli_epi16(m12, 1) & m12;
+
+        __m128i ud_and = u & d;
+        __m128i lr_and = l & r;
+        __m128i ud_or = u | d;
+        __m128i lr_or = l | r;
+
+        FieldBit l3;
+        FieldBit l2;
+
+        l3.data = (ud_or & lr_or) | ud_and | lr_and;
+        l2.data = _mm_andnot_si128(l3.get_expand().data, u | l);
+
+        link_2 += l2.get_count();
+        link_3 += l3.get_count();
+    }
+};
+
+i32 get_link_horizontal(Field& field)
+{
+    i32 result = 0;
+
+    for (u8 p = 0; p < Cell::COUNT - 1; ++p) {
+        __m128i m12 = field.data[p].get_mask_12().data;
+
+        alignas(16) u16 v[8];
+        _mm_store_si128((__m128i*)v, m12);
+
+        result += std::popcount(u32(v[0] & v[1]));
+        result += std::popcount(u32(v[1] & v[2]));
+        result += std::popcount(u32(v[3] & v[4]));
+        result += std::popcount(u32(v[4] & v[5]));
+    }
+
+    return result;
 };
 
 };

@@ -9,12 +9,22 @@ static std::pair<i32, i32> simulate(Eval::Weight w, std::vector<Cell::Pair> queu
     i32 score = 0;
     i32 frame = 0;
 
-    for (int i = 0; i < 50; ++i)
+    i32 i_offset = 0;
+
+    for (int i = 0; i < 54; ++i)
     {
+        // if (field.is_empty()) {
+        //     score = 0;
+        //     frame = 0;
+
+        //     i_offset += i;
+        //     i = 0;
+        // }
+
         std::vector<Cell::Pair> tqueue;
-        tqueue.push_back(queue[(i + 0) % queue.size()]);
-        tqueue.push_back(queue[(i + 1) % queue.size()]);
-        tqueue.push_back(queue[(i + 2) % queue.size()]);
+        tqueue.push_back(queue[(i + i_offset + 0) % queue.size()]);
+        tqueue.push_back(queue[(i + i_offset + 1) % queue.size()]);
+        tqueue.push_back(queue[(i + i_offset + 2) % queue.size()]);
 
         auto airesult = AI::think_1p(field, tqueue, w, false);
 
