@@ -15,13 +15,13 @@ avec<Placement, 22> generate(Field& field, bool pair_equal)
     }
 
     for (i8 x = 0; x < 6; ++x) {
-        if (is_valid(heights, x, Direction::Type::UP)) {
+        if (is_valid(heights, field.row14, x, Direction::Type::UP)) {
             result.add({ x, Direction::Type::UP });
         }
     }
 
     for (i8 x = 0; x < 5; ++x) {
-        if (is_valid(heights, x, Direction::Type::RIGHT)) {
+        if (is_valid(heights, field.row14, x, Direction::Type::RIGHT)) {
             result.add({ x, Direction::Type::RIGHT });
         }
     }
@@ -31,13 +31,13 @@ avec<Placement, 22> generate(Field& field, bool pair_equal)
     }
 
     for (i8 x = 0; x < 6; ++x) {
-        if (is_valid(heights, x, Direction::Type::DOWN)) {
+        if (is_valid(heights, field.row14, x, Direction::Type::DOWN)) {
             result.add({ x, Direction::Type::DOWN });
         }
     }
 
     for (i8 x = 1; x < 6; ++x) {
-        if (is_valid(heights, x, Direction::Type::LEFT)) {
+        if (is_valid(heights, field.row14, x, Direction::Type::LEFT)) {
             result.add({ x, Direction::Type::LEFT });
         }
     }
@@ -45,20 +45,20 @@ avec<Placement, 22> generate(Field& field, bool pair_equal)
     return result;
 };
 
-bool is_valid(u8 heights[6], i8 x, Direction::Type r)
+bool is_valid(u8 heights[6], u8 row14, i8 x, Direction::Type r)
 {
-    if (r == Direction::Type::UP || r == Direction::Type::DOWN) {
-        if (heights[x] >= 12) {
-            return false;
-        }
-    }
-    else {
-        if (heights[x] > 12 || heights[x + Direction::get_offset_x(r)] > 12) {
-            return false;
-        }
+    if (heights[x] + (r == Direction::Type::DOWN) > 12) {
+        return false;
     }
 
-    const i8 check[6][5] = {
+    i8 child_x = x + Direction::get_offset_x(r);
+    i8 child_y = heights[child_x] + (r == Direction::Type::UP);
+
+    if (child_y == 13 && ((row14 >> child_x) & 1)) {
+        return false;
+    }
+
+    const i8 check[6][4] = {
         { 1, 0, -1 },
         { 1, -1 },
         { -1 },

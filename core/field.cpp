@@ -5,6 +5,8 @@ Field::Field()
     for (u8 cell = 0; cell < Cell::COUNT; ++cell) {
         this->data[cell] = FieldBit();
     }
+
+    this->row14 = 0;
 };
 
 bool Field::operator == (const Field& other)
@@ -15,7 +17,7 @@ bool Field::operator == (const Field& other)
         }
     }
 
-    return true;
+    return this->row14 == other.row14;
 };
 
 bool Field::operator != (const Field& other)
@@ -104,16 +106,22 @@ u8 Field::get_drop_pair_frame(i8 x, Direction::Type direction)
 
 bool Field::is_occupied(i8 x, i8 y)
 {
-    if (x < 0 || x > 5 || y < 0 || y > 12) {
+    if (x < 0 || x > 5 || y < 0 || y > 13) {
         return true;
+    }
+    if (y == 13) {
+        return (this->row14 >> x) & 1;
     }
     return y < this->get_height(x);
 };
 
 bool Field::is_occupied(i8 x, i8 y, u8 heights[6])
 {
-    if (x < 0 || x > 5 || y < 0 || y > 12) {
+    if (x < 0 || x > 5 || y < 0 || y > 13) {
         return true;
+    }
+    if (y == 13) {
+        return (this->row14 >> x) & 1;
     }
     return y < heights[x];
 };
@@ -127,6 +135,10 @@ bool Field::is_colliding_pair(i8 x, i8 y, Direction::Type direction)
 
 bool Field::is_colliding_pair(i8 x, i8 y, Direction::Type direction, u8 heights[6])
 {
+    if (y > 12) {
+        return true;
+    }
+
     return
         this->is_occupied(x, y, heights) ||
         this->is_occupied(x + Direction::get_offset_x(direction), y + Direction::get_offset_y(direction), heights);
@@ -148,6 +160,9 @@ void Field::drop_puyo(i8 x, Cell::Type cell)
     u8 height = this->get_height(x);
     if (height < 13) {
         this->set_cell(x, height, cell);
+    }
+    else if (height == 13) {
+        this->row14 = this->row14 | (1 << x);
     }
 };
 

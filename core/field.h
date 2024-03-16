@@ -6,6 +6,7 @@ class Field
 {
 public:
     FieldBit data[Cell::COUNT];
+    u8 row14;
 public:
     Field();
 public:

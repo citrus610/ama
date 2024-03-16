@@ -13,7 +13,7 @@ struct Placement
 
 avec<Placement, 22> generate(Field& field, bool pair_equal);
 
-bool is_valid(u8 heights[6], i8 x, Direction::Type r);
+bool is_valid(u8 heights[6], u8 row14, i8 x, Direction::Type r);
 
 static i64 bench_move(i32 iter)
 {

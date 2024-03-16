@@ -78,4 +78,38 @@ public:
     static Queue get_queue_convert_m180(Queue& queue);
 };
 
+static void print(Queue queue)
+{
+    for (auto mv : queue) {
+        switch (mv)
+        {
+        case Input::LEFT:
+            printf("L ");
+            break;
+        case Input::RIGHT:
+            printf("R ");
+            break;
+        case Input::CW:
+            printf("CW ");
+            break;
+        case Input::CCW:
+            printf("CCW ");
+            break;
+        case Input::M180:
+            printf("180 ");
+            break;
+        case Input::DROP:
+            printf("D ");
+            break;
+        case Input::NONE:
+            printf("_ ");
+            break;
+        default:
+            break;
+        }
+    }
+
+    printf("\n");
+};
+
 };

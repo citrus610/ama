@@ -52,7 +52,6 @@ constexpr Weight DEFAULT = {
     .y = 147,
     .need = -7,
     .key = -282,
-    .key_s = -238,
     .chi = 117,
 
     .dub_2 = 0,

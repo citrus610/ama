@@ -30,6 +30,10 @@ bool Position::move_cw(Field& field, u8 height[6])
         return true;
     }
 
+    if (new_direction == Direction::Type::UP) {
+        return false;
+    }
+
     if (!field.is_colliding_pair(this->x - Direction::get_offset_x(new_direction), this->y - Direction::get_offset_y(new_direction), new_direction, height)) {
         this->x -= Direction::get_offset_x(new_direction);
         this->y -= Direction::get_offset_y(new_direction);
@@ -47,6 +51,10 @@ bool Position::move_ccw(Field& field, u8 height[6])
     if (!field.is_colliding_pair(this->x, this->y, new_direction, height)) {
         this->r = new_direction;
         return true;
+    }
+
+    if (new_direction == Direction::Type::UP) {
+        return false;
     }
 
     if (!field.is_colliding_pair(this->x - Direction::get_offset_x(new_direction), this->y - Direction::get_offset_y(new_direction), new_direction, height)) {
@@ -112,14 +120,14 @@ Queue PositionMap::get(i8 x, i8 y, Direction::Type direction)
 {
     assert(x >= 0 && x <= 5);
     assert(y > 10 && y < 16);
-    return this->data[x][y - 11][static_cast<uint8_t>(direction)];
+    return this->data[x][y - 11][static_cast<u8>(direction)];
 };
 
 void PositionMap::set(i8 x, i8 y, Direction::Type direction, Queue value)
 {
     assert(x >= 0 && x <= 5);
     assert(y > 10 && y < 16);
-    this->data[x][y - 11][static_cast<uint8_t>(direction)] = value;
+    this->data[x][y - 11][static_cast<u8>(direction)] = value;
 };
 
 PlacementMap::PlacementMap()

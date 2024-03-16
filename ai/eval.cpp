@@ -133,7 +133,7 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
     result += link_3 * w.link_3;
 
     i32 link_h = Eval::get_link_horizontal(field);
-    result += link_h;
+    result += link_h * w.link_h;
 
     result += field.data[static_cast<u8>(Cell::Type::GARBAGE)].get_count() * w.nuisance;
 
