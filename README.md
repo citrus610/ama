@@ -1,8 +1,23 @@
 # Ama
+<a href="https://ko-fi.com/citrus610">
+    <img
+        src="https://img.shields.io/badge/Ko--fi-Support%20me%20on%20Ko--fi-FF5E5B?logo=kofi&logoColor=white"
+        alt="ko-fi"
+        height="24em"
+    >
+</a>
+
 A strong Puyo Puyo AI.
 
 ## Overview
-Ama is an AI created to play Puyo Puyo Tsu 1P and PVP. This project aims to reach the playing strength of professional Puyo Puyo players.
+Ama is an AI created to play Puyo Puyo Tsu 1P and PVP. This project aims to reach the playing strength of professional Puyo Puyo players. Currently, Ama is rated 3648 on Puyo Puyo Champions Steam version.
+<p align="center">
+    <a href="https://www.youtube.com/watch?v=LQiWRFNRknk">
+        <img src="https://img.youtube.com/vi/LQiWRFNRknk/0.jpg">
+        <br />
+        YouTube - ama AI vs のらすけ [ぷよぷよAI]
+    </a>
+</p>
 
 ## Features
 - Efficient bitfield implementation inspired by [puyoai](https://github.com/puyoai/puyoai)
