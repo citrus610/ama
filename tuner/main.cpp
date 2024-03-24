@@ -37,6 +37,14 @@ int main()
         std::string out_str;
         std::string out_id_str;
 
+        std::string out_str_x;
+        std::string out_str_y;
+        std::string out_str_chi;
+        std::string out_str_key;
+        std::string out_str_shape;
+        std::string out_str_tear;
+        std::string out_str_waste;
+
         while (true)
         {
             std::string id = std::to_string(idx);
@@ -53,6 +61,14 @@ int main()
             for (i32 i = 0; i <= s.unchange; ++i) {
                 out_str += std::to_string(s.count) + "\n";
                 out_id_str += id + "\n";
+
+                out_str_x += std::to_string(s.w.x) + "\n";
+                out_str_y += std::to_string(s.w.y) + "\n";
+                out_str_chi += std::to_string(s.w.chi) + "\n";
+                out_str_key += std::to_string(s.w.key) + "\n";
+                out_str_shape += std::to_string(s.w.shape) + "\n";
+                out_str_tear += std::to_string(s.w.tear) + "\n";
+                out_str_waste += std::to_string(s.w.waste) + "\n";
             }
 
             idx += 1;
@@ -61,6 +77,13 @@ int main()
         std::ofstream o("out.txt");
         o << out_str << std::endl;
         o << out_id_str << std::endl;
+        o << "x:\n" << out_str_x << std::endl;
+        o << "y:\n" << out_str_y << std::endl;
+        o << "chi:\n" << out_str_chi << std::endl;
+        o << "key:\n" << out_str_key << std::endl;
+        o << "shape:\n" << out_str_shape << std::endl;
+        o << "tear:\n" << out_str_tear << std::endl;
+        o << "waste:\n" << out_str_waste << std::endl;
         o.close();
     }
 

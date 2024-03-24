@@ -2,6 +2,7 @@
 
 #include "search/build.h"
 #include "search/attack.h"
+#include "search/beam.h"
 #include "gaze.h"
 #include "path.h"
 
@@ -29,6 +30,8 @@ constexpr Result RESULT_DEFAULT = Result {
 };
 
 Result think_1p(Field field, Cell::Queue queue, Eval::Weight w = Eval::DEFAULT, bool all_clear = true, i32 trigger = TRIGGER_DEFAULT);
+
+Result think_1p_beam(Field field, Cell::Queue queue, Eval::Weight w = Eval::DEFAULT, bool all_clear = true, i32 trigger = TRIGGER_DEFAULT);
 
 Result build(Build::Result& bsearch, Attack::Result& asearch, bool all_clear = true, i32 trigger = TRIGGER_DEFAULT);
 

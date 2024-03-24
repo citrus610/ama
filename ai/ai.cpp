@@ -11,6 +11,53 @@ Result think_1p(Field field, Cell::Queue queue, Eval::Weight w, bool all_clear, 
     return AI::build(bsearch, asearch, all_clear, trigger);
 };
 
+Result think_1p_beam(Field field, Cell::Queue queue, Eval::Weight w, bool all_clear, i32 trigger)
+{
+    if (field.get_count() < 50) {
+        auto bsearch = Build::search(field, { queue[0], queue[1] }, w);
+
+        if (bsearch.candidates.empty()) {
+            return AI::RESULT_DEFAULT;
+        }
+
+        auto best = *std::max_element(
+            bsearch.candidates.begin(),
+            bsearch.candidates.end(),
+            [&] (const Build::Candidate& a, const Build::Candidate& b) {
+                if (a.eval.value != b.eval.value) {
+                    return a.eval.value < b.eval.value;
+                }
+
+                return a.eval_fast < b.eval_fast;
+            }
+        );
+        
+        return Result {
+            .placement = best.placement,
+            .plan = best.eval.plan,
+            .eval = best.eval.value,
+        };
+    }
+
+    auto beam = Beam::search(field, { queue[0], queue[1] }, Eval::DEFAULT, 80000, 200, 5);
+
+    if (beam.candidates.empty()) {
+        return AI::RESULT_DEFAULT;
+    }
+
+    auto best = *std::max_element(
+        beam.candidates.begin(),
+        beam.candidates.end(),
+        [&] (const Beam::Candidate& a, const Beam::Candidate& b) {
+            return a.score < b.score;
+        }
+    );
+
+    return Result {
+        .placement = best.placement
+    };
+};
+
 Result build(Build::Result& bsearch, Attack::Result& asearch, bool all_clear, i32 trigger)
 {
     if (bsearch.candidates.empty() && asearch.candidates.empty()) {
@@ -63,7 +110,8 @@ Result build(Build::Result& bsearch, Attack::Result& asearch, bool all_clear, i3
         q_max = std::max(q_max, c.eval.q);
     }
 
-    bool trigger_condition = (chain_score_max > q_max && chain_score_max > 10000) || chain_score_max > trigger;
+    bool trigger_condition = (chain_score_max > q_max && chain_score_max > 50000) || chain_score_max >= trigger;
+    // bool trigger_condition = chain_score_max > q_max && chain_score_max > 10000;
 
     if (!trigger_condition && !bsearch.candidates.empty()) {
         auto best = *std::max_element(

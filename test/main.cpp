@@ -76,38 +76,19 @@ int main()
         "......",
         "......",
         "......",
-        ".....R",
         "......",
-        ".....R",
-        "RR...R",
-        ".....R",
-        "R.....",
-        "RR..BY",
-        "GGGBBY"
+        "......",
+        "......",
+        "R.Y...",
+        "YYY...",
+        "RGB...",
+        "RRG...",
+        "GGB..."
     };
 
     // field.from(c);
 
-    field.print();
-
-    // Quiet::search(field, 6, 3, [&] (Quiet::Result q) {
-    //     u8 heights[6];
-    //     q.plan.get_heights(heights);
-    //     heights[q.x] = field.get_height(q.x);
-
-    //     i32 need = q.plan.get_height(q.x) - heights[q.x];
-
-    //     i32 key = 6 - q.depth;
-
-    //     i32 key_s = q.plan.get_count() - field.get_count() - need - key;
-
-    //     q.plan.print();
-    //     printf("need: %d\n", need);
-    //     printf("key: %d\n", key);
-    //     printf("key_s: %d\n", key_s);
-
-    //     std::cin.get();
-    // });
+    // field.print();
 
     Eval::Weight w;
     save_json_heuristic();

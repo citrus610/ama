@@ -7,12 +7,12 @@ namespace Quiet
 
 struct Result
 {
-    i32 chain = 0;
-    i32 score = 0;
-    i32 x = 0;
-    i32 depth = 0;
-    Field plan;
-    Field remain;
+    i32 chain = 0; // chain count
+    i32 score = 0; // chain score
+    i32 x = 0; // ignition x
+    i32 depth = 0; // depth of the quiet search
+    Field plan; // field before triggering
+    Field remain; // field after triggering
 };
 
 void search(
@@ -41,5 +41,7 @@ void generate(
     i32 drop,
     std::function<void(i8, i8, i32)> callback
 );
+
+i32 get_redundancy();
 
 };

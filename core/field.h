@@ -35,6 +35,7 @@ public:
     void drop_garbage(i32 count);
 public:
     avec<Field, 19> pop();
+    avec<Field, 19> pop(i32& fall);
 public:
     void from(const char c[13][7]);
     void print();

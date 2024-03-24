@@ -247,6 +247,43 @@ avec<Field, 19> Field::pop()
     return result;
 };
 
+avec<Field, 19> Field::pop(i32& fall)
+{
+    avec<Field, 19> result = avec<Field, 19>();
+    fall = 0;
+
+    for (i32 index = 0; index < 20; ++index) {
+        Field pop = this->get_mask_pop();
+        FieldBit mask_pop = pop.get_mask();
+        if (_mm_testz_si128(mask_pop.data, mask_pop.data)) {
+            break;
+        }
+        result.add(pop);
+
+        mask_pop = mask_pop | (mask_pop.get_expand() & this->data[static_cast<u8>(Cell::Type::GARBAGE)]);
+
+        alignas(16) u16 v_mask[8];
+        _mm_store_si128((__m128i*)v_mask, mask_pop.data);
+
+        u8 heights[6];
+        this->get_heights(heights);
+
+        for (i32 i = 0; i < 6; ++i) {
+            if (v_mask[i] == 0) {
+                continue;
+            }
+
+            fall += heights[i] - std::popcount(u32(v_mask[i]) | u32(v_mask[i] - 1));
+        }
+
+        for (u8 cell = 0; cell < Cell::COUNT; ++cell) {
+            this->data[cell].pop(mask_pop);
+        }
+    }
+
+    return result;
+};
+
 void Field::from(const char c[13][7])
 {
     *this = Field();

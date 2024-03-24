@@ -3,14 +3,19 @@
 namespace Eval
 {
 
-Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
+Result evaluate(Field& field, i32 tear, i32 waste, Weight& w, i32 depth, i32 drop)
 {
     i32 result = 0;
 
     auto plan = field;
 
-    const i32 MAX_DEPTH = 6;
-    const i32 MAX_DROP = 3;
+    i32 field_count = field.get_count();
+
+    const i32 phase_min = 36;
+    const i32 phase_max = 48;
+    const i32 phase_dt = phase_max - phase_min;
+
+    i32 phase = std::clamp(field_count, phase_min, phase_max) - phase_min;
 
     i32 dub_2 = 0;
     i32 dub_3 = 0;
@@ -18,7 +23,7 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
     i32 q_max = 0;
 
     i32 qscore = INT32_MIN;
-    Quiet::search(field, MAX_DEPTH, MAX_DROP, [&] (Quiet::Result q) {
+    Quiet::search(field, depth, drop, [&] (Quiet::Result q) {
         i32 score = 0;
 
         if (q.chain == 2 && q.score >= 840) {
@@ -29,24 +34,30 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
             dub_3 += 1;
         }
 
-        q_max = std::max(q_max, q.score);
-
         u8 heights[6];
         q.plan.get_heights(heights);
         heights[q.x] = field.get_height(q.x);
+
+        i32 q_plan_count = q.plan.get_count();
+
+        q_max = std::max(
+            q_max,
+            q.score * (78 - q_plan_count) / (78 - field_count)
+        );
 
         score += q.chain * w.chain;
         score += q.score * w.score;
         score += heights[q.x] * w.y;
 
+        i32 x_phase_min = std::abs(q.x - 0) * w.x;
+        i32 x_phase_max = std::abs(q.x - 5) * w.x;
+        score += (x_phase_min * (phase_dt - phase) + x_phase_max * phase) / phase_dt;
+
         i32 need = q.plan.get_height(q.x) - heights[q.x];
         score += need * w.need;
 
-        i32 key = MAX_DEPTH - q.depth;
+        i32 key = q.plan.get_count() - field_count - need;
         score += key * w.key;
-
-        i32 key_s = q.plan.get_count() - field.get_count() - need - key;
-        score += key_s * w.key_s;
 
         i32 chi = 0;
         if (q.x < 5) {
@@ -58,7 +69,7 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
                 chi += 1;
             }
         }
-        else if (q.x > 0) {
+        if (q.x > 0) {
             for (i32 i = q.x - 1; i >= 0; --i) {
                 if (heights[i] > heights[q.x]) {
                     break;
@@ -67,13 +78,7 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
                 chi += 1;
             }
         }
-        score += (chi - 6) * w.chi;
-
-        i32 shape = Eval::get_shape(heights);
-        score += shape * w.shape;
-
-        i32 u = Eval::get_u(heights);
-        score += u * w.u;
+        score += (chi - 5) * w.chi;
 
         if (score > qscore) {
             qscore = score;
@@ -118,19 +123,34 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
         result += form * w.form;
     }
 
-    if (qscore == INT32_MIN) {
-        i32 shape = Eval::get_shape(heights);
-        result += shape * w.shape;
+    i32 shape_phase_min = 0;
+    i32 shape_phase_max = 0;
+    Eval::get_shape(heights, shape_phase_min, shape_phase_max);
+    result += (shape_phase_min * (phase_dt - phase) + shape_phase_max * phase) * w.shape / phase_dt;
+    // result += shape_phase_min * w.shape;
 
-        i32 u = Eval::get_u(heights);
-        result += u * w.u;
+    i32 u = Eval::get_u(heights);
+    result += u * w.u;
+
+    i32 space14 = 1;
+    for (i32 i = 3; i < 6; ++i) {
+        if ((field.row14 >> i) & 1) {
+            break;
+        }
+
+        space14 += 1;
     }
+    for (i32 i = 1; i >= 0; --i) {
+        if ((field.row14 >> i) & 1) {
+            break;
+        }
 
-    i32 link_2 = 0;
-    i32 link_3 = 0;
-    Eval::get_link(field, link_2, link_3);
-    result += link_2 * w.link_2;
-    result += link_3 * w.link_3;
+        space14 += 1;
+    }
+    result += space14 * w.space14;
+
+    i32 link = Eval::get_link(field);
+    result += link * w.link;
 
     i32 link_h = Eval::get_link_horizontal(field);
     result += link_h * w.link_h;
@@ -150,16 +170,15 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
     };
 };
 
-i32 get_shape(u8 heights[6])
+void get_shape(u8 heights[6], i32& shape_phase_min, i32& shape_phase_max)
 {
-    i32 shape = 0;
-    i32 shape_coef[6] = { 2, 0, 0, -2, -2, 0 };
+    i32 shape_coef_min[6] = { 2, 0, 0, -4, -4, -2 };
+    i32 shape_coef_max[6] = { 2, 0, 0, 0, 0, 2 };
 
     for (i32 i = 0; i < 6; ++i) {
-        shape += std::abs(i32(heights[i]) - i32(heights[2]) - shape_coef[i]);
+        shape_phase_min += std::abs(i32(heights[i]) - i32(heights[2]) - shape_coef_min[i]);
+        shape_phase_max += std::abs(i32(heights[i]) - i32(heights[2]) - shape_coef_max[i]);
     }
-
-    return shape;
 };
 
 i32 get_u(u8 heights[6])
@@ -174,30 +193,23 @@ i32 get_u(u8 heights[6])
     return u;
 };
 
-void get_link(Field& field, i32& link_2, i32& link_3)
+i32 get_link(Field& field)
 {
+    i32 result = 0;
+
     for (u8 p = 0; p < Cell::COUNT - 1; ++p) {
         __m128i m12 = field.data[p].get_mask_12().data;
 
-        __m128i r = _mm_srli_si128(m12, 2) & m12;
-        __m128i l = _mm_slli_si128(m12, 2) & m12;
-        __m128i u = _mm_srli_epi16(m12, 1) & m12;
-        __m128i d = _mm_slli_epi16(m12, 1) & m12;
+        FieldBit lh;
+        FieldBit lv;
 
-        __m128i ud_and = u & d;
-        __m128i lr_and = l & r;
-        __m128i ud_or = u | d;
-        __m128i lr_or = l | r;
+        lh.data = _mm_srli_si128(m12, 2) & m12;
+        lv.data = _mm_srli_epi16(m12, 1) & m12;
 
-        FieldBit l3;
-        FieldBit l2;
-
-        l3.data = (ud_or & lr_or) | ud_and | lr_and;
-        l2.data = _mm_andnot_si128(l3.get_expand().data, u | l);
-
-        link_2 += l2.get_count();
-        link_3 += l3.get_count();
+        result += lh.get_count() + lv.get_count();
     }
+
+    return result;
 };
 
 i32 get_link_horizontal(Field& field)
