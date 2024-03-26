@@ -393,6 +393,14 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                         return a.second.count > b.second.count;
                     }
 
+                    if (enemy.attack_frame <= 1) {
+                        if (a.second.frame_real != b.second.frame_real) {
+                            return a.second.frame_real > b.second.frame_real;
+                        }
+
+                        return a.second.score < b.second.score;
+                    }
+
                     if (a.second.score != b.second.score) {
                         return a.second.score < b.second.score;
                     }
@@ -555,8 +563,8 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
     }
 
     // Kill
-    if (Gaze::is_garbage_obstruct(enemy.field, Chain::Score { .count = enemy_gaze.main.count, .score = enemy_gaze.main.score })) {
-        i32 attack_need = (enemy_gaze.main.score / target_point) + 72 - enemy.field.get_mask().get_mask_12().get_count();
+    if (enemy_garbage_obstruct) {
+        i32 attack_need = (enemy_gaze.main.score / target_point) + 72 - enemy.field.get_mask().get_mask_12().get_count() + enemy.all_clear * 30;
 
         std::vector<std::pair<Move::Placement, Attack::Data>> attacks_kill;
 
@@ -706,13 +714,19 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
         }
     }
 
+    auto build_type = Build::Type::BUILD;
+
+    if (enemy_garbage_obstruct) {
+        build_type = Build::Type::SECOND_SMALL;
+    }
+
     // Build
     if (bsearch.empty()) {
-        auto b_result = Build::search(self.field, { self.queue[0], self.queue[1] }, w[Build::Type::BUILD]);
+        auto b_result = Build::search(self.field, { self.queue[0], self.queue[1] }, w[build_type]);
         return AI::build(b_result, asearch);
     }
     
-    return AI::build(bsearch[Build::Type::BUILD], asearch);
+    return AI::build(bsearch[build_type], asearch);
 };
 
 };

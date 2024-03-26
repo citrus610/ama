@@ -39,6 +39,7 @@ struct Weight
     i32 link_2 = 0;
     i32 link_3 = 0;
     i32 link_h = 0;
+    i32 waste_14 = 0;
     i32 side = 0;
     i32 nuisance = 0;
 
@@ -77,6 +78,8 @@ void get_link(Field& field, i32& link_2, i32& link_3);
 
 i32 get_link_horizontal(Field& field);
 
+i32 get_waste_14(u8 row14);
+
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Weight,
     chain,
     score,
@@ -93,6 +96,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Weight,
     link_2,
     link_3,
     link_h,
+    waste_14,
     side,
     nuisance,
     tear,

@@ -135,6 +135,9 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
     i32 link_h = Eval::get_link_horizontal(field);
     result += link_h * w.link_h;
 
+    i32 waste_14 = Eval::get_waste_14(field.row14);
+    result += waste_14 * w.waste_14;
+
     result += field.data[static_cast<u8>(Cell::Type::GARBAGE)].get_count() * w.nuisance;
 
     result += (i32(heights[3]) + i32(heights[4]) + i32(heights[5]) - i32(heights[0]) - i32(heights[1]) - i32(heights[2])) * w.side;
@@ -217,6 +220,29 @@ i32 get_link_horizontal(Field& field)
     }
 
     return result;
+};
+
+i32 get_waste_14(u8 row14)
+{
+    i32 space = 1;
+
+    for (i32 i = 3; i < 6; ++i) {
+        if ((row14 >> i) & 1) {
+            break;
+        }
+
+        space += 1;
+    }
+
+    for (i32 i = 1; i >= 0; --i) {
+        if ((row14 >> i) & 1) {
+            break;
+        }
+
+        space += 1;
+    }
+
+    return 6 - space;
 };
 
 };
