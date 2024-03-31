@@ -42,10 +42,11 @@ Eval::Weight constrain(Eval::Weight w)
     #define CONSTRAIN_NEGATIVE(p) w.p = std::min(0, w.p);
 
     CONSTRAIN_POSITIVE(y);
+    CONSTRAIN_POSITIVE(chi);
     CONSTRAIN_POSITIVE(link_h);
 
+    // CONSTRAIN_NEGATIVE(x);
     CONSTRAIN_NEGATIVE(key);
-    CONSTRAIN_NEGATIVE(key_s);
     CONSTRAIN_NEGATIVE(need);
     CONSTRAIN_NEGATIVE(shape);
     CONSTRAIN_NEGATIVE(tear);
@@ -64,11 +65,12 @@ std::pair<Eval::Weight, Eval::Weight> randomize(Eval::Weight w, std::optional<i3
     i32 rng = idx.value_or(rand() % PARAM_COUNT);
 
     i32* param_ptr[] = {
+        // &w.x,
         &w.y,
-        &w.key,
-        &w.key_s,
-        &w.need,
+        &w.chi,
         &w.link_h,
+        &w.key,
+        &w.need,
         &w.shape,
         &w.tear,
         &w.waste
@@ -81,6 +83,7 @@ std::pair<Eval::Weight, Eval::Weight> randomize(Eval::Weight w, std::optional<i3
 
     auto delta = 20;
     if (rng == 3) delta = 10;
+    if (rng == 5) delta = 10;
 
     auto value = 2 + (rand() % delta);
 
@@ -205,9 +208,10 @@ static void print_w(Eval::Weight w)
 {
     #define PRW(p) printf("%s: %d\n", #p, w.p);
 
+    // PRW(x);
     PRW(y);
+    PRW(chi);
     PRW(key);
-    PRW(key_s);
     PRW(need);
     PRW(link_h);
     PRW(shape);
