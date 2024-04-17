@@ -722,7 +722,12 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
     }
 
     // Check early attack
-    if (enemy.field.get_count() <= 30 && enemy_harass_fast_max >= 18) {
+    if (enemy.field.get_count() <= 30 && enemy_harass_fast_max >= 12) {
+        build_type = Build::Type::SECOND_SMALL;
+    }
+
+    // Build fast if our resource is low
+    if (Gaze::is_small_field(self.field, enemy.field)) {
         build_type = Build::Type::SECOND_SMALL;
     }
 
