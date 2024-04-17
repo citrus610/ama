@@ -44,7 +44,7 @@ Result build(Build::Result& bsearch, Attack::Result& asearch, bool all_clear, i3
             return Result {
                 .placement = best.first,
                 .plan = std::nullopt,
-                .eval = 0,
+                .eval = best.second.score,
             };
         }
     }
@@ -173,7 +173,7 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                 return Result {
                     .placement = best.first,
                     .plan = std::nullopt,
-                    .eval = 0
+                    .eval = best.second.score
                 };
             }
         }
@@ -256,7 +256,8 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
 
         if (enemy_attack <= accept_limit &&
             self.field.get_height(2) < 10 &&
-            enemy_harass_fast_max <= 6) {
+            enemy_harass_fast_max <= 6 &&
+            enemy.attack_frame < 6) {
             i32 build_type = Build::Type::AC;
 
             if (enemy_attack <= 6) {
@@ -717,6 +718,11 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
     auto build_type = Build::Type::BUILD;
 
     if (enemy_garbage_obstruct) {
+        build_type = Build::Type::SECOND_SMALL;
+    }
+
+    // Check early attack
+    if (enemy.field.get_count() <= 30 && enemy_harass_fast_max >= 18) {
         build_type = Build::Type::SECOND_SMALL;
     }
 

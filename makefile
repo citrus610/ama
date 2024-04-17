@@ -16,18 +16,33 @@ ifeq ($(PEXT), true)
 CXXFLAGS += -DPEXT
 endif
 
-STATIC_LIB = -luser32 -lgdi32 -lopengl32 -lgdiplus -lShlwapi -ldwmapi -lstdc++fs -lsetupapi -lhid -static
+PPC_NAME = ppc
+
+ifeq ($(GUI), true)
+CXXFLAGS += -DGUI
+PPC_NAME = ppc_gui
+endif
+
+STATIC_LIB = -lsetupapi -lhid
 
 SRC_AI = core/*.cpp ai/*.cpp ai/search/*.cpp
 
-SRC_PPC = ppc/engine/*.cpp ppc/gui/*.cpp ppc/*.cpp
+SDL_DIR = C:/Users/nwint/Desktop/data/c++/lib/SDL2/x86_64-w64-mingw32
+SDL_INC = -I$(SDL_DIR)/include/SDL2
+SDL_LIB = -L$(SDL_DIR)/lib -lmingw32 -lSDL2main -lSDL2
+
+A = -mwindows
+
+GUI_DIR = C:/Users/nwint/Desktop/data/c++/lib/imgui
+GUI_INC = -I$(GUI_DIR) -I$(GUI_DIR)/backends
+GUI_SRC = $(GUI_DIR)/*.cpp $(GUI_DIR)/backends/imgui_impl_sdl2.cpp $(GUI_DIR)/backends/imgui_impl_sdlrenderer2.cpp
 
 .PHONY: all puyop ppc test clean makedir
 
 all: puyop ppc
 
 ppc: makedir
-	@$(CXX) $(CXXFLAGS) $(SRC_AI) ppc/engine/*.cpp ppc/*.cpp $(STATIC_LIB) -o bin/ppc/ppc.exe
+	@$(CXX) $(CXXFLAGS) $(SRC_AI) $(SDL_INC) $(GUI_INC) $(GUI_SRC) ppc/*.cpp $(STATIC_LIB) $(SDL_LIB) -o bin/ppc/$(PPC_NAME).exe
 
 puyop: makedir
 	@$(CXX) $(CXXFLAGS) $(SRC_AI) puyop/*.cpp -o bin/puyop/puyop.exe
