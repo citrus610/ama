@@ -185,7 +185,7 @@ bool is_small_field(Field& field, Field& other)
     i32 field_count = (field.get_mask() & (~field.data[static_cast<i32>(Cell::Type::GARBAGE)])).get_count();
     i32 other_count = (other.get_mask() & (~other.data[static_cast<i32>(Cell::Type::GARBAGE)])).get_count();
 
-    return (other_count >= field_count * 2) && other_count >= 22;
+    return (other_count >= field_count * 2 || field_count <= 24) && other_count >= 22;
 };
 
 };
