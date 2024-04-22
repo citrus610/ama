@@ -41,6 +41,8 @@ private:
     std::thread* thread;
     std::vector<Result> results;
 public:
+    Thread();
+public:
     bool search(Field field, Cell::Queue queue, std::vector<Eval::Weight> w);
     std::vector<Result> get();
     void clear();

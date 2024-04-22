@@ -3,6 +3,12 @@
 namespace Build
 {
 
+Thread::Thread()
+{
+    this->thread = nullptr;
+    this->results = {};
+};
+
 bool Thread::search(Field field, Cell::Queue queue, std::vector<Eval::Weight> w)
 {
     if (this->thread != nullptr) {

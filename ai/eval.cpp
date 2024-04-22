@@ -42,11 +42,8 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
         i32 need = q.plan.get_height(q.x) - heights[q.x];
         score += need * w.need;
 
-        i32 key = MAX_DEPTH - q.depth;
+        i32 key = q.plan.get_count() - field.get_count() - need;
         score += key * w.key;
-
-        i32 key_s = q.plan.get_count() - field.get_count() - need - key;
-        score += key_s * w.key_s;
 
         i32 chi = 0;
         if (q.x < 5) {
@@ -91,25 +88,19 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
     field.get_heights(heights);
 
     if (w.form > 0) {
-        i32 form = -10;
+        i32 form = 0;
 
         const Form::Data list[] = {
-            Form::GTR_2(),
             Form::GTR_1(),
-            Form::FRON(),
-            Form::MERI(),
-            Form::SGTR(),
-            Form::LLR_1(),
-            Form::LLR_2()
+            Form::GTR_2(),
+            Form::GTR_3(),
+            Form::GTR_4()
         };
 
         auto mask_garbage = field.data[static_cast<i32>(Cell::Type::GARBAGE)];
         mask_garbage.data &= _mm_set_epi16(0, 0, 0, 0, 0xF, 0xF, 0xF, 0xF);
 
-        if (mask_garbage.get_count() > 0) {
-            form = 0;
-        }
-        else {
+        if (mask_garbage.get_count() == 0) {
             for (i32 i = 0; i < _countof(list); ++i) {
                 form = std::max(form, Form::evaluate(field, heights, list[i]));
             }
@@ -126,11 +117,8 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
         result += u * w.u;
     }
 
-    i32 link_2 = 0;
-    i32 link_3 = 0;
-    Eval::get_link(field, link_2, link_3);
-    result += link_2 * w.link_2;
-    result += link_3 * w.link_3;
+    i32 link = Eval::get_link(field);
+    result += link * w.link;
 
     i32 link_h = Eval::get_link_horizontal(field);
     result += link_h * w.link_h;
@@ -140,7 +128,7 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
 
     result += field.data[static_cast<u8>(Cell::Type::GARBAGE)].get_count() * w.nuisance;
 
-    result += (i32(heights[3]) + i32(heights[4]) + i32(heights[5]) - i32(heights[0]) - i32(heights[1]) - i32(heights[2])) * w.side;
+    result += (i32(heights[3]) + i32(heights[4]) + i32(heights[5]) + i32(heights[0]) + i32(heights[1]) - i32(heights[2])) * w.side;
 
     result += tear * w.tear;
 
@@ -177,30 +165,23 @@ i32 get_u(u8 heights[6])
     return u;
 };
 
-void get_link(Field& field, i32& link_2, i32& link_3)
+i32 get_link(Field& field)
 {
+    i32 result = 0;
+
     for (u8 p = 0; p < Cell::COUNT - 1; ++p) {
         __m128i m12 = field.data[p].get_mask_12().data;
 
-        __m128i r = _mm_srli_si128(m12, 2) & m12;
-        __m128i l = _mm_slli_si128(m12, 2) & m12;
-        __m128i u = _mm_srli_epi16(m12, 1) & m12;
-        __m128i d = _mm_slli_epi16(m12, 1) & m12;
+        FieldBit lh;
+        FieldBit lv;
 
-        __m128i ud_and = u & d;
-        __m128i lr_and = l & r;
-        __m128i ud_or = u | d;
-        __m128i lr_or = l | r;
+        lh.data = _mm_srli_si128(m12, 2) & m12;
+        lv.data = _mm_srli_epi16(m12, 1) & m12;
 
-        FieldBit l3;
-        FieldBit l2;
-
-        l3.data = (ud_or & lr_or) | ud_and | lr_and;
-        l2.data = _mm_andnot_si128(l3.get_expand().data, u | l);
-
-        link_2 += l2.get_count();
-        link_3 += l3.get_count();
+        result += lh.get_count() + lv.get_count();
     }
+
+    return result;
 };
 
 i32 get_link_horizontal(Field& field)
