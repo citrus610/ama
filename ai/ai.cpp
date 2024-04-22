@@ -109,8 +109,15 @@ Result build(Build::Result& bsearch, Attack::Result& asearch, bool all_clear, i3
     return AI::RESULT_DEFAULT;
 };
 
-Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, std::vector<Build::Result>& bsearch, Eval::Weight w[], i32 target_point)
+Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, std::vector<Build::Result>& bsearch, Eval::Weight w[], i32 target_point, bool& form)
 {
+    // Check field count and use human's forms
+    i32 field_count = self.field.get_count();
+
+    if (field_count >= 30 || self.field.data[static_cast<i32>(Cell::Type::GARBAGE)].get_count() > 0) {
+        form = false;
+    }
+
     // Get attack balance
     i32 balance = self.attack - enemy.attack;
 
@@ -131,6 +138,7 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
 
     i32 enemy_harass_max = 0;
     i32 enemy_harass_fast_max = 0;
+    i32 enemy_early_attack = 0;
 
     for (auto& attack : enemy_gaze.harass) {
         enemy_harass_max = std::max(enemy_harass_max, attack.score / target_point);
@@ -138,6 +146,18 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
 
     for (auto& attack : enemy_gaze.harass_fast) {
         enemy_harass_fast_max = std::max(enemy_harass_fast_max, attack.score / target_point);
+
+        if (attack.result.get_count() < 12) {
+            if (attack.score / target_point < 12) {
+                continue;
+            }
+
+            if (attack.count == 3 && attack.score / target_point < 24) {
+                continue;
+            }
+
+            enemy_early_attack = std::max(enemy_early_attack, attack.score / target_point);
+        }
     }
 
     // If the enemy is attacking
@@ -177,8 +197,6 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                 };
             }
         }
-
-        i32 field_count = self.field.get_count();
 
         // Check if we can trigger main chain right away
         {
@@ -251,28 +269,9 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
             }
         }
 
-        // Check if we can accept garbage
-        i32 accept_limit = Gaze::get_accept_limit(self.field);
-
-        if (enemy_attack <= accept_limit &&
-            self.field.get_height(2) < 10 &&
-            enemy_harass_fast_max <= 6 &&
-            enemy.attack_frame < 6) {
-            i32 build_type = Build::Type::AC;
-
-            if (enemy_attack <= 6) {
-                build_type = Build::Type::BUILD;
-            }
-
-            if (bsearch.empty()) {
-                auto b_result = Build::search(self.field, { self.queue[0], self.queue[1] }, w[build_type]);
-                return AI::build(b_result, asearch);
-            }
-            
-            return AI::build(bsearch[build_type], asearch);
-        }
-
         // Return attack if possible
+        bool attack_small_over_enemy_harass = false;
+
         std::vector<std::pair<Move::Placement, Attack::Data>> attacks_syncro;
         std::vector<std::pair<Move::Placement, Attack::Data>> attacks_main;
         std::vector<std::pair<Move::Placement, Attack::Data>> attacks_small;
@@ -300,6 +299,10 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                     attack.frame_real + attack.count * 2 <= enemy.attack_frame + 2) {
                     attack.redundancy = Gaze::get_redundancy(self.field, attack.result);
                     attacks_small.push_back({ placement, attack });
+                }
+
+                if (attack_send >= enemy_attack + enemy_harass_fast_max) {
+                    attack_small_over_enemy_harass = true;
                 }
 
                 return;
@@ -356,6 +359,26 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                 .plan = std::nullopt,
                 .eval = best_syncro.second.score
             };
+        }
+
+        // Check if we can accept garbage
+        i32 accept_limit = Gaze::get_accept_limit(self.field);
+
+        if (enemy_attack <= accept_limit &&
+            self.field.get_height(2) < 10 &&
+            !attack_small_over_enemy_harass) {
+            i32 build_type = Build::Type::AC;
+
+            if (enemy_attack <= 6) {
+                build_type = Build::Type::BUILD;
+            }
+
+            if (bsearch.empty()) {
+                auto b_result = Build::search(self.field, { self.queue[0], self.queue[1] }, w[build_type]);
+                return AI::build(b_result, asearch);
+            }
+            
+            return AI::build(bsearch[build_type], asearch);
         }
 
         if (!attacks_small.empty()) {
@@ -630,7 +653,9 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
             auto classify_attack = [&] (Move::Placement placement, Attack::Data& attack) {
                 i32 attack_send = (attack.score + self.bonus_point) / target_point;
 
-                if (attack.result.get_count() < 24) {
+                i32 attack_result_count = attack.result.get_count();
+
+                if (attack_result_count < 24) {
                     return;
                 }
 
@@ -717,18 +742,23 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
 
     auto build_type = Build::Type::BUILD;
 
+    if (!form) {
+        build_type = Build::Type::SECOND_BIG;
+    }
+
     if (enemy_garbage_obstruct) {
         build_type = Build::Type::SECOND_SMALL;
     }
 
-    // Check early attack
-    if (enemy.field.get_count() <= 30 && enemy_harass_fast_max >= 12) {
-        build_type = Build::Type::SECOND_SMALL;
-    }
-
     // Build fast if our resource is low
-    if (Gaze::is_small_field(self.field, enemy.field)) {
-        build_type = Build::Type::SECOND_SMALL;
+    if (Gaze::is_small_field(self.field, enemy.field) ||
+        (enemy_early_attack > 0 && field_count < 30)) {
+        if (self.field.get_height(2) < 4) {
+            build_type = Build::Type::AC;
+        }
+        else {
+            build_type = Build::Type::SECOND_SMALL;
+        }
     }
 
     // Build

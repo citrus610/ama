@@ -44,8 +44,8 @@ Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit)
             .count = q.chain,
             .score = q.score,
             .score_total = q.score,
-            .frame = 3 + q.plan.get_count() - field_count,
-            .frame_real = 4 + q.plan.get_count() - field_count,
+            .frame = 3 + i32(q.plan.get_count()) - field_count,
+            .frame_real = 4 + i32(q.plan.get_count()) - field_count,
             .all_clear = false,
             .result = Field()
         };
@@ -117,14 +117,14 @@ i32 get_accept_limit(Field& field)
     else {
         if (field_count_left <= 12 && field.get_height(2) <= 4) {
             if (field.get_height(2) == 0) {
-                result = 36;
+                result = 30;
             }
             else {
-                result = 30;
+                result = 18;
             }
         }
         else {
-            result = 9;
+            result = 12;
         }
     }
 

@@ -32,6 +32,6 @@ Result think_1p(Field field, Cell::Queue queue, Eval::Weight w = Eval::DEFAULT, 
 
 Result build(Build::Result& bsearch, Attack::Result& asearch, bool all_clear = true, i32 trigger = TRIGGER_DEFAULT);
 
-Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, std::vector<Build::Result>& bsearch, Eval::Weight w[], i32 target_point);
+Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, std::vector<Build::Result>& bsearch, Eval::Weight w[], i32 target_point, bool& form);
 
 };
