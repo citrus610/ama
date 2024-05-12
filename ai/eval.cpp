@@ -140,7 +140,7 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
 
     result += field.data[static_cast<u8>(Cell::Type::GARBAGE)].get_count() * w.nuisance;
 
-    result += (i32(heights[3]) + i32(heights[4]) + i32(heights[5]) - i32(heights[0]) - i32(heights[1]) - i32(heights[2])) * w.side;
+    result += (i32(heights[0]) + i32(heights[1]) + i32(heights[3]) + i32(heights[4]) + i32(heights[5]) - i32(heights[2])) * w.side;
 
     result += tear * w.tear;
 

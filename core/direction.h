@@ -28,6 +28,8 @@ constexpr i8 get_offset_x(Type direction)
     case Type::LEFT:
         return -1;
     }
+
+    return 0;
 };
 
 constexpr i8 get_offset_y(Type direction)
@@ -43,6 +45,8 @@ constexpr i8 get_offset_y(Type direction)
     case Type::LEFT:
         return 0;
     }
+
+    return 0;
 };
 
 };

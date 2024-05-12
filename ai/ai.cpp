@@ -152,7 +152,7 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                 continue;
             }
 
-            if (attack.count == 3 && attack.score / target_point < 24) {
+            if (attack.count > 2) {
                 continue;
             }
 
@@ -256,7 +256,8 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
             }
 
             if (best.second.score > 0) {
-                if (enemy_attack >= 60 ||
+                if (best.second.score >= AI::TRIGGER_DEFAULT ||
+                    enemy_attack >= 90 ||
                     enemy_small_field ||
                     enemy_garbage_obstruct) {
                     // printf("mf\n");
@@ -270,8 +271,6 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
         }
 
         // Return attack if possible
-        bool attack_small_over_enemy_harass = false;
-
         std::vector<std::pair<Move::Placement, Attack::Data>> attacks_syncro;
         std::vector<std::pair<Move::Placement, Attack::Data>> attacks_main;
         std::vector<std::pair<Move::Placement, Attack::Data>> attacks_small;
@@ -299,10 +298,6 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                     attack.frame_real + attack.count * 2 <= enemy.attack_frame + 2) {
                     attack.redundancy = Gaze::get_redundancy(self.field, attack.result);
                     attacks_small.push_back({ placement, attack });
-                }
-
-                if (attack_send >= enemy_attack + enemy_harass_fast_max) {
-                    attack_small_over_enemy_harass = true;
                 }
 
                 return;
@@ -364,14 +359,23 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
         // Check if we can accept garbage
         i32 accept_limit = Gaze::get_accept_limit(self.field);
 
+        // Get resource balance
+        i32 resource_balance = Gaze::get_resource_balance(self.field, enemy.field);
+
+        if (resource_balance <= -12) {
+            accept_limit = (std::abs(resource_balance) / 6 + 1) * 6;
+        }
+
         if (enemy_attack <= accept_limit &&
-            self.field.get_height(2) < 10 &&
-            !attack_small_over_enemy_harass) {
+            self.field.get_height(2) < 10) {
             i32 build_type = Build::Type::AC;
 
             if (enemy_attack <= 6) {
                 build_type = Build::Type::BUILD;
             }
+
+            // TODO: implement countering
+            // Plan: search for possible placements that can accept garbages
 
             if (bsearch.empty()) {
                 auto b_result = Build::search(self.field, { self.queue[0], self.queue[1] }, w[build_type]);
@@ -576,16 +580,6 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
         }
     }
 
-    // Build all clear
-    if (enemy.all_clear) {
-        if (bsearch.empty()) {
-            auto b_result = Build::search(self.field, { self.queue[0], self.queue[1] }, w[Build::Type::AC]);
-            return AI::build(b_result, asearch);
-        }
-        
-        return AI::build(bsearch[Build::Type::AC], asearch);
-    }
-
     // Kill
     if (enemy_garbage_obstruct) {
         i32 attack_need = (enemy_gaze.main.score / target_point) + 72 - enemy.field.get_mask().get_mask_12().get_count() + enemy.all_clear * 30;
@@ -638,7 +632,8 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
     }
 
     // Harass
-    if (self.field.get_count() >= 30 && self.field.get_count() < 54) {
+    // Don't harass if our resource is low
+    if (field_count >= 30 && field_count < 52) {
         i32 attack_max = 0;
 
         for (auto& c : asearch.candidates) {
@@ -661,15 +656,14 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
 
                 if (attack.result.get_height(0) < 4 ||
                     attack.result.get_height(1) < 4 ||
-                    attack.result.get_height(2) < 4) {
+                    attack.result.get_height(2) < 4 ||
+                    attack.result.get_height(3) < 4 ||
+                    attack.result.get_height(4) < 4 ||
+                    attack.result.get_height(5) < 4) {
                     return;
                 }
 
-                if (attack_send < 6 || attack.count >= 4) {
-                    return;
-                }
-
-                if (enemy_gaze.main_fast.score / target_point >= 30 && attack.count > 2) {
+                if (attack_send < 6 || attack.count >= 3) {
                     return;
                 }
 
@@ -678,7 +672,25 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                     return;
                 }
 
-                // if (attack_send >= enemy_harass_max || attack_send >= enemy_gaze.main.score) {
+                if (attack.count == 2 &&
+                    enemy_gaze.defence_2dub.score / target_point >= 30 &&
+                    enemy_gaze.defence_2dub.count <= 5 &&
+                    attack_result_count < 30) {
+                    return;
+                }
+
+                if (enemy_gaze.main_fast.score / target_point >= 30 &&
+                    enemy_gaze.main_fast.count <= 5 &&
+                    enemy_gaze.main_fast.count >= 4 &&
+                    attack_result_count < 30) {
+                    return;
+                }
+
+                if (attack.count == 1 && attack_send >= enemy_gaze.defence_1dub.score / target_point) {
+                    attacks_harass.push_back({ placement, attack });
+                    return;
+                }
+
                 if (attack_send >= enemy_harass_fast_max) {
                     attacks_harass.push_back({ placement, attack });
                 }
@@ -752,13 +764,13 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
 
     // Build fast if our resource is low
     if (Gaze::is_small_field(self.field, enemy.field) ||
-        (enemy_early_attack > 0 && field_count < 30)) {
-        if (self.field.get_height(2) < 4) {
-            build_type = Build::Type::AC;
-        }
-        else {
-            build_type = Build::Type::SECOND_SMALL;
-        }
+        (enemy_early_attack >= 18 && field_count < 30)) {
+        build_type = Build::Type::AC;
+    }
+
+    // Build all clear
+    if (enemy.all_clear) {
+        build_type = Build::Type::AC;
     }
 
     // Build

@@ -48,7 +48,7 @@ Field get_plan(Field& field, const Data& pattern)
     Field result = field;
 
     Cell::Type map[HEIGHT * 6];
-    memset(map, static_cast<i32>(Cell::Type::NONE), 36 * sizeof(Cell::Type));
+    memset(map, static_cast<i32>(Cell::Type::NONE), HEIGHT * 6 * sizeof(Cell::Type));
 
     for (i32 x = 0; x < 6; ++x) {
         for (i32 y = 0; y < HEIGHT; ++y) {
