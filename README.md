@@ -10,7 +10,7 @@
 A strong Puyo Puyo AI.
 
 ## Overview
-Ama is an AI created to play Puyo Puyo Tsu 1P and PVP. This project aims to reach the playing strength of professional Puyo Puyo players. Currently, Ama is rated 3648 on Puyo Puyo Champions Steam version.
+Ama is an AI created to play Puyo Puyo Tsu 1P and PVP. This project aims to reach the playing strength of professional Puyo Puyo players. Currently, Ama can run on Puyo Puyo Champions Steam version.
 <p align="center">
     <a href="https://www.youtube.com/watch?v=LQiWRFNRknk">
         <img src="https://img.youtube.com/vi/LQiWRFNRknk/0.jpg">
