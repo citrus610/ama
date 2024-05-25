@@ -283,8 +283,8 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
 
             i32 attack_send = (attack.score + self.bonus_point) / target_point;
 
-            if ((attack_send >= enemy_attack + 18 && attack.frame_real + attack.count * 2 <= enemy.attack_frame + 4) ||
-                (attack_send >= enemy_attack + 12 && attack.frame_real + attack.count * 2 <= enemy.attack_frame + 3)) {
+            if ((attack_send >= enemy_attack + 18 && attack.frame_real + attack.count * 2 <= enemy.attack_frame + 3) ||
+                (attack_send >= enemy_attack + 12 && attack.frame_real + attack.count * 2 <= enemy.attack_frame + 2)) {
                 attacks_syncro.push_back({ placement, attack });
             }
 
@@ -315,6 +315,10 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
             }
 
             if (attack_send + 30 < enemy_attack) {
+                return;
+            }
+
+            if (attack_send == 0 && field_count <= 42) {
                 return;
             }
 
@@ -646,10 +650,16 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
             std::vector<std::pair<Move::Placement, Attack::Data>> attacks_harass;
 
             auto classify_attack = [&] (Move::Placement placement, Attack::Data& attack) {
+                // Remove attacks that happened after a long attack
+                if (attack.frame > 4 && (attack.score_total - attack.score) / target_point > 4) {
+                    return;
+                }
+
                 i32 attack_send = (attack.score + self.bonus_point) / target_point;
 
                 i32 attack_result_count = attack.result.get_count();
 
+                // Remove attacks that are too wasteful of resources
                 if (attack_result_count < 24) {
                     return;
                 }
@@ -663,10 +673,16 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                     return;
                 }
 
+                // Remove weak & long attacks
                 if (attack_send < 6 || attack.count >= 3) {
                     return;
                 }
 
+                if (attack.count == 2 && attack.score / target_point <= 6) {
+                    return;
+                }
+
+                // Remove attacks that change the field a lot
                 attack.redundancy = Gaze::get_redundancy(self.field, attack.result);
                 if (attack.redundancy >= 6) {
                     return;
@@ -679,14 +695,7 @@ Result think_2p(Gaze::Player self, Gaze::Player enemy, Attack::Result& asearch, 
                     return;
                 }
 
-                if (enemy_gaze.main_fast.score / target_point >= 30 &&
-                    enemy_gaze.main_fast.count <= 5 &&
-                    enemy_gaze.main_fast.count >= 4 &&
-                    attack_result_count < 30) {
-                    return;
-                }
-
-                if (attack.count == 1 && attack_send >= enemy_gaze.defence_1dub.score / target_point) {
+                if (attack.count == 1 && (attack_send >= enemy_gaze.defence_1dub.score / target_point)) {
                     attacks_harass.push_back({ placement, attack });
                     return;
                 }

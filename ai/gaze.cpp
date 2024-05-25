@@ -36,7 +36,7 @@ Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit)
             return false;
         }
 
-        return attack.count < 5 && attack.frame <= 4 && attack.result.get_count() >= std::max(24, field_count / 2);
+        return attack.count < 5 && attack.result.get_count() >= std::max(24, field_count / 2);
     };
 
     for (auto& c : asearch.candidates) {
@@ -82,8 +82,8 @@ Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit)
             .count = q.chain,
             .score = q.score,
             .score_total = q.score,
-            .frame = 3 + i32(q.plan.get_count()) - field_count,
-            .frame_real = 4 + i32(q.plan.get_count()) - field_count,
+            .frame = 3 + std::max(0, i32(q.plan.get_count()) - field_count),
+            .frame_real = 4 + std::max(0, i32(q.plan.get_count()) - field_count),
             .all_clear = false,
             .result = Field()
         };
@@ -94,10 +94,6 @@ Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit)
             if (attack.frame <= fast_frame_limit) {
                 result.harass_fast.push_back(attack);
             }
-        }
-
-        if (defence_2dub_condition(attack) && attack.score > result.defence_2dub.score) {
-            result.defence_2dub = attack;
         }
     });
 
@@ -149,7 +145,7 @@ i32 get_accept_limit(Field& field)
         result = 4;
     }
     else if (field_count > 30) {
-        if (field_count_left <= 12 && field.get_height(2) <= 4) {
+        if (field.get_height(2) <= 4) {
             result = 12;
         }
         else {

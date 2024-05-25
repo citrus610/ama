@@ -140,7 +140,10 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
 
     result += field.data[static_cast<u8>(Cell::Type::GARBAGE)].get_count() * w.nuisance;
 
-    result += (i32(heights[0]) + i32(heights[1]) + i32(heights[3]) + i32(heights[4]) + i32(heights[5]) - i32(heights[2])) * w.side;
+    i32 height_avg_left = (i32(heights[0]) + i32(heights[1])) / 2;
+    i32 height_avg_right = (i32(heights[3]) + i32(heights[4]) + i32(heights[5])) / 3;
+    // result += (i32(heights[0]) + i32(heights[1]) + i32(heights[3]) + i32(heights[4]) + i32(heights[5]) - i32(heights[2])) * w.side;
+    result += (std::max(height_avg_left, height_avg_right) - i32(heights[2])) * w.side;
 
     result += tear * w.tear;
 

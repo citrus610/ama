@@ -25,8 +25,8 @@ struct Data
     Quiet::Result main_q = Quiet::Result();
     std::vector<Attack::Data> harass;
     std::vector<Attack::Data> harass_fast;
-    Attack::Data defence_1dub;
-    Attack::Data defence_2dub;
+    Attack::Data defence_1dub = Attack::Data();;
+    Attack::Data defence_2dub = Attack::Data();;
 };
 
 Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit);
