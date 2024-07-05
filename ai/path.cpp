@@ -288,14 +288,14 @@ bool Finder::above_stack_move(Field& field, Move::Placement placement)
 {
     if (placement.x > 2) {
         for (int x = 2; x <= placement.x; ++x) {
-            if (field.get_height(x) >= 8) {
+            if (field.get_height(x) > 8) {
                 return true;
             }
         }
     }
     else {
         for (int x = 2; x >= placement.x; --x) {
-            if (field.get_height(x) >= 8) {
+            if (field.get_height(x) > 8) {
                 return true;
             }
         }
@@ -303,14 +303,14 @@ bool Finder::above_stack_move(Field& field, Move::Placement placement)
 
     if (placement.x + Direction::get_offset_x(placement.r) > 2) {
         for (int x = 2; x <= placement.x + Direction::get_offset_x(placement.r); ++x) {
-            if (field.get_height(x) >= 8) {
+            if (field.get_height(x) > 8) {
                 return true;
             }
         }
     }
     else {
         for (int x = 2; x >= placement.x + Direction::get_offset_x(placement.r); --x) {
-            if (field.get_height(x) >= 8) {
+            if (field.get_height(x) > 8) {
                 return true;
             }
         }

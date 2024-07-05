@@ -178,9 +178,24 @@ void generate(
             continue;
         }
 
-        u8 drop_max = std::min(drop, 12 - heights[x] - (x == 2));
+        i32 drop_max = std::min(drop, 12 - i32(heights[x]) - i32(x == 2));
 
-        if (drop_max == 0) {
+        // i32 height_l = 13;
+        // i32 height_r = 13;
+
+        // if (x > 0) {
+        //     height_l = heights[x - 1];
+        // }
+
+        // if (x < 5) {
+        //     height_r = heights[x + 1];
+        // }
+
+        // if (heights[x] < height_l && heights[x] < height_r && height_l >= 11 && height_r >= 11) {
+        //     drop_max = std::min(drop_max, std::max(0, 12 - height_l) + std::max(0, 12 - height_r));
+        // }
+
+        if (drop_max <= 0) {
             continue;
         }
 

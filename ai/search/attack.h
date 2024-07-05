@@ -44,6 +44,7 @@ Result search(
     Field field,
     std::vector<Cell::Pair> queue,
     bool deep = true,
+    i32 frame_delay = 0,
     i32 thread_count = 4
 );
 
@@ -52,7 +53,8 @@ void dfs(
     std::vector<Cell::Pair>& queue,
     Candidate& candidate,
     i32 depth,
-    bool deep
+    bool deep,
+    i32 frame_delay
 );
 
 static bool cmp_main(const Attack::Data& a, const Attack::Data& b)
@@ -62,6 +64,22 @@ static bool cmp_main(const Attack::Data& a, const Attack::Data& b)
     }
 
     return a.frame_real > b.frame_real;
+};
+
+static bool cmp_main_enough(const Attack::Data& a, const Attack::Data& b, i32 trigger)
+{
+    bool a_over = a.score >= trigger;
+    bool b_over = b.score >= trigger;
+
+    if (a_over != b_over) {
+        return a_over < b_over;
+    }
+
+    if (a.frame_real != b.frame_real) {
+        return a.frame_real > b.frame_real;
+    }
+
+    return a.score < b.score;
 };
 
 };

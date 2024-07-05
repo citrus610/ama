@@ -3,11 +3,13 @@
 namespace Gaze
 {
 
-Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit)
+Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit, bool dropping_garbage)
 {
     Data result = Data();
 
     i32 field_count = field.get_count();
+
+    const i32 dropping_garbage_delay = 1;
 
     auto harass_condition = [&] (Attack::Data& attack) -> bool {
         attack.redundancy = Gaze::get_redundancy(field, attack.result);
@@ -26,7 +28,7 @@ Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit)
             return false;
         }
 
-        return attack.count < 5 && attack.frame <= 1 && attack.result.get_count() >= std::max(24, field_count / 2);
+        return attack.count < 4 && attack.frame <= 2 && attack.result.get_count() >= std::max(24, field_count / 2);
     };
 
     auto defence_2dub_condition = [&] (Attack::Data& attack) -> bool {
@@ -36,11 +38,16 @@ Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit)
             return false;
         }
 
-        return attack.count < 5 && attack.result.get_count() >= std::max(24, field_count / 2);
+        return attack.count <= 5 && attack.frame <= 4 && attack.result.get_count() >= std::max(24, field_count / 2);
     };
 
     for (auto& c : asearch.candidates) {
         for (auto& attack : c.attacks) {
+            if (dropping_garbage) {
+                attack.frame += dropping_garbage_delay;
+                attack.frame_real += dropping_garbage_delay;
+            }
+
             if (harass_condition(attack)) {
                 result.harass.push_back(attack);
 
@@ -63,6 +70,11 @@ Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit)
         }
 
         for (auto& attack : c.attacks_detect) {
+            if (dropping_garbage) {
+                attack.frame += dropping_garbage_delay;
+                attack.frame_real += dropping_garbage_delay;
+            }
+
             if (harass_condition(attack)) {
                 result.harass.push_back(attack);
 
@@ -87,6 +99,11 @@ Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit)
             .all_clear = false,
             .result = Field()
         };
+
+        if (dropping_garbage) {
+            attack.frame += dropping_garbage_delay;
+            attack.frame_real += dropping_garbage_delay;
+        }
 
         if (harass_condition(attack)) {
             result.harass.push_back(attack);
@@ -114,6 +131,11 @@ Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit)
         .all_clear = false,
         .result = Field()
     };
+
+    if (dropping_garbage) {
+        result.main.frame += dropping_garbage_delay;
+        result.main.frame_real += dropping_garbage_delay;
+    }
 
     result.main_q = q_best;
 

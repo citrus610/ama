@@ -13,7 +13,8 @@ enum class Input
     CCW,
     M180,
     DROP,
-    NONE
+    NONE,
+    WAIT
 };
 
 typedef std::vector<Input> Queue;

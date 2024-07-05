@@ -7,6 +7,7 @@ Result search(
     Field field,
     std::vector<Cell::Pair> queue,
     bool deep,
+    i32 frame_delay,
     i32 thread_count
 )
 {
@@ -86,14 +87,15 @@ Result search(
                 }
 
                 child.score += chain.score;
-                child.frame += root.field.get_drop_pair_frame(placement.x, placement.r) + chain.count * 2;
+                child.frame += root.field.get_drop_pair_frame(placement.x, placement.r) + chain.count * 2 + frame_delay;
 
                 Attack::dfs(
                     child,
                     queue,
                     candidate,
                     1,
-                    deep
+                    deep,
+                    frame_delay
                 );
 
                 if (candidate.attacks.empty()) {
@@ -120,7 +122,8 @@ void dfs(
     std::vector<Cell::Pair>& queue,
     Candidate& candidate,
     i32 depth,
-    bool deep
+    bool deep,
+    i32 frame_delay
 )
 {
     auto placements = Move::generate(node.field, queue[depth].first == queue[depth].second);
@@ -162,7 +165,7 @@ void dfs(
         }
 
         child.score += chain.score;
-        child.frame += node.field.get_drop_pair_frame(placements[i].x, placements[i].r) + chain.count * 2;
+        child.frame += node.field.get_drop_pair_frame(placements[i].x, placements[i].r) + chain.count * 2 + frame_delay;
 
         if (depth + 1 < queue.size()) {
             Attack::dfs(
@@ -170,7 +173,8 @@ void dfs(
                 queue,
                 candidate,
                 depth + 1,
-                deep
+                deep,
+                frame_delay
             );
         }
         else {

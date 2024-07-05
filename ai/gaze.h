@@ -16,6 +16,7 @@ struct Player
     i32 attack = 0;
     i32 attack_frame = 0;
     i32 attack_chain = 0;
+    bool dropping_garbage = false;
 };
 
 struct Data
@@ -29,7 +30,7 @@ struct Data
     Attack::Data defence_2dub = Attack::Data();;
 };
 
-Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit);
+Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit, bool dropping_garbage = false);
 
 i32 get_unburied_count(Field& field);
 
