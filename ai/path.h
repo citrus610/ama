@@ -87,7 +87,6 @@ public:
     static bool above_stack_move(Field& field, Move::Placement placement, u8 stack = 8);
 public:
     static Queue find_cancel(Field& field, Move::Placement placement, Cell::Pair pair);
-    static Queue cancel_horizontal(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks);
     static Queue cancel_vertical(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks);
     static Queue cancel_movement_horizontal(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks);
     static Queue cancel_movement_vertical(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks);

@@ -444,51 +444,15 @@ Queue Finder::find_cancel(Field& field, Move::Placement placement, Cell::Pair pa
         return cancel_mv_hor;
     }
 
-    // // Find horizontal cancelation
-    // auto cancel_hor = Finder::cancel_horizontal(heights, placement, pair, locks);
-
-    // if (!cancel_hor.empty()) {
-    //     return cancel_hor;
-    // }
-
     // Find vertical cancelation
-    // auto cancel_ver = Finder::cancel_vertical(heights, placement, pair, locks);
-
-    // if (!cancel_ver.empty()) {
-    //     return cancel_ver;
-    // }
-
-    return {};
-};
-
-Queue Finder::cancel_horizontal(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks)
-{
-    if (placement.r == Direction::Type::UP || placement.r == Direction::Type::DOWN) {
+    if (Finder::above_stack_move(field, placement, 8)) {
         return {};
     }
 
-    if (placement.x == 2) {
-        return {};
-    }
+    auto cancel_ver = Finder::cancel_vertical(heights, placement, pair, locks);
 
-    if (placement.r == Direction::Type::RIGHT && placement.x > 2 && height[placement.x] == height[placement.x + 1] && height[placement.x] >= height[placement.x - 1]) {
-        auto queue = locks.get(placement.x - 1, Direction::Type::RIGHT);
-
-        queue.push_back(Path::Input::TOUCH);
-        queue.push_back(Path::Input::RIGHT);
-        queue.push_back(Path::Input::DROP);
-
-        return queue;
-    }
-
-    if (placement.r == Direction::Type::LEFT && placement.x < 2 && height[placement.x] == height[placement.x - 1] && height[placement.x] >= height[placement.x + 1]) {
-        auto queue = locks.get(placement.x + 1, Direction::Type::LEFT);
-
-        queue.push_back(Path::Input::TOUCH);
-        queue.push_back(Path::Input::LEFT);
-        queue.push_back(Path::Input::DROP);
-
-        return queue;
+    if (!cancel_ver.empty()) {
+        return cancel_ver;
     }
 
     return {};
