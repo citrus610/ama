@@ -73,7 +73,9 @@ Result search(
                         .frame = 0,
                         .frame_real = root.field.get_drop_pair_frame(placement.x, placement.r),
                         .redundancy = INT32_MAX,
+                        .link = Eval::get_link(child.field),
                         .all_clear = child.field.is_empty(),
+                        .parent = root.field,
                         .result = child.field
                     };
 
@@ -147,7 +149,9 @@ void dfs(
                 .frame = child.frame,
                 .frame_real = child.frame + node.field.get_drop_pair_frame(placements[i].x, placements[i].r),
                 .redundancy = INT32_MAX,
+                .link = Eval::get_link(child.field),
                 .all_clear = child.field.is_empty(),
+                .parent = node.field,
                 .result = child.field
             };
 
@@ -190,8 +194,10 @@ void dfs(
                         .frame = child.frame + q.plan.get_height(q.x) - child.field.get_height(q.x),
                         .frame_real = child.frame + 1 + q.plan.get_height(q.x) - child.field.get_height(q.x),
                         .redundancy = INT32_MAX,
+                        .link = Eval::get_link(plan_pop),
                         .all_clear = false,
-                        .result = plan_pop,
+                        .parent = child.field,
+                        .result = plan_pop
                     });
                 });
             }

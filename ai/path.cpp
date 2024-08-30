@@ -76,7 +76,7 @@ bool Position::move_180(Field& field, u8 height[6])
         return false;
     }
 
-    u8 new_direction = (static_cast<u8>(this->r) + 2) & 0b11;
+    i8 new_direction = (static_cast<i8>(this->r) + 2) & 0b11;
     this->y += new_direction - 1;
     this->r = Direction::Type(new_direction);
 
@@ -94,6 +94,23 @@ void Position::normalize()
     case Direction::Type::DOWN:
         --this->y;
         this->r = Direction::Type::UP;
+        break;
+    default:
+        break;
+    }
+};
+
+void Position::denormalize()
+{
+    switch (this->r)
+    {
+    case Direction::Type::RIGHT:
+        ++this->x;
+        this->r = Direction::Type::LEFT;
+        break;
+    case Direction::Type::UP:
+        ++this->y;
+        this->r = Direction::Type::DOWN;
         break;
     default:
         break;
@@ -166,6 +183,48 @@ Queue Finder::find(Field& field, Move::Placement placement, Cell::Pair pair)
         return drop;
     }
 
+    auto locks = Finder::generate_placements(field, placement, pair);
+
+    Position position = { .x = int8_t(placement.x), .y = 0, .r = placement.r };
+    
+    Queue result = {};
+
+    if (pair.first == pair.second) {
+        auto position_normalize = position;
+        auto position_denormalize = position;
+
+        position_normalize.normalize();
+        position_denormalize.denormalize();
+
+        auto queue_normalize = locks.get(position_normalize.x, position_normalize.r);
+        auto queue_denormalize = locks.get(position_denormalize.x, position_denormalize.r);
+
+        result = std::max(
+            queue_normalize,
+            queue_denormalize,
+            [&] (const Queue& a, const Queue& b) {
+                bool a_valid = !a.empty();
+                bool b_valid = !b.empty();
+
+                if (a_valid != b_valid) {
+                    return a_valid < b_valid;
+                }
+
+                return a.size() > b.size();
+            }
+        );
+    }
+    else {
+        result = locks.get(position.x, position.r);
+    }
+
+    result.push_back(Input::DROP);
+
+    return Finder::get_queue_convert_m180(result);
+};
+
+PlacementMap Finder::generate_placements(Field& field, Move::Placement placement, Cell::Pair pair)
+{
     bool equal_pair = pair.first == pair.second;
 
     u8 height[6];
@@ -191,16 +250,7 @@ Queue Finder::find(Field& field, Move::Placement placement, Cell::Pair pair)
         Finder::expand(field, height, node, queue, queue_map);
     }
 
-    Position position = { .x = int8_t(placement.x), .y = 0, .r = placement.r };
-    
-    if (equal_pair) {
-        position.normalize();
-    }
-
-    Queue result = locks_map.get(position.x, position.r);
-    result.push_back(Input::DROP);
-
-    return Finder::get_queue_convert_m180(result);
+    return locks_map;
 };
 
 void Finder::expand(Field& field, u8 height[6], Finder::Node& node, std::vector<Finder::Node>& queue, PositionMap& queue_map)
@@ -273,29 +323,27 @@ void Finder::expand(Field& field, u8 height[6], Finder::Node& node, std::vector<
 
 void Finder::lock(Finder::Node& node, PlacementMap& locks_map, bool equal_pair)
 {
-    Position position = node.position;
-    if (equal_pair) {
-        position.normalize();
-    }
-
-    if (locks_map.get(position.x, position.r).size() == 0 ||
-        locks_map.get(position.x, position.r).size() > node.path.size()) {
-        locks_map.set(position.x, position.r, node.path);
+    if (locks_map.get(node.position.x, node.position.r).size() == 0 ||
+        locks_map.get(node.position.x, node.position.r).size() > node.path.size()) {
+        locks_map.set(node.position.x, node.position.r, node.path);
     }
 };
 
-bool Finder::above_stack_move(Field& field, Move::Placement placement)
+bool Finder::above_stack_move(Field& field, Move::Placement placement, u8 stack)
 {
+    u8 heights[6];
+    field.get_heights(heights);
+
     if (placement.x > 2) {
         for (int x = 2; x <= placement.x; ++x) {
-            if (field.get_height(x) > 8) {
+            if (heights[x] >= stack) {
                 return true;
             }
         }
     }
     else {
         for (int x = 2; x >= placement.x; --x) {
-            if (field.get_height(x) > 8) {
+            if (heights[x] >= stack) {
                 return true;
             }
         }
@@ -303,14 +351,14 @@ bool Finder::above_stack_move(Field& field, Move::Placement placement)
 
     if (placement.x + Direction::get_offset_x(placement.r) > 2) {
         for (int x = 2; x <= placement.x + Direction::get_offset_x(placement.r); ++x) {
-            if (field.get_height(x) > 8) {
+            if (heights[x] >= stack) {
                 return true;
             }
         }
     }
     else {
         for (int x = 2; x >= placement.x + Direction::get_offset_x(placement.r); --x) {
-            if (field.get_height(x) > 8) {
+            if (heights[x] >= stack) {
                 return true;
             }
         }
@@ -355,6 +403,476 @@ Queue Finder::get_queue_convert_m180(Queue& queue)
     }
 
     return result;
+};
+
+Queue Finder::find_cancel(Field& field, Move::Placement placement, Cell::Pair pair)
+{
+    if (placement.x == 2 && placement.r == Direction::Type::UP) {
+        Queue drop;
+        drop.push_back(Input::DROP);
+        return drop;
+    }
+
+    if (Finder::above_stack_move(field, placement, 10)) {
+        return {};
+    }
+
+    u8 heights[6];
+    field.get_heights(heights);
+
+    auto locks = Finder::generate_placements(field, placement, pair);
+
+    // Find step cancelation
+    auto cancel_step = Finder::cancel_step(heights, placement, pair, locks);
+
+    if (!cancel_step.empty()) {
+        return cancel_step;
+    }
+
+    // Find horizontal movement cancelation
+    // Place vertically
+    auto cancel_mv_ver = Finder::cancel_movement_vertical(heights, placement, pair, locks);
+
+    if (!cancel_mv_ver.empty()) {
+        return cancel_mv_ver;
+    }
+
+    // Place horizontally
+    auto cancel_mv_hor = Finder::cancel_movement_horizontal(heights, placement, pair, locks);
+
+    if (!cancel_mv_hor.empty()) {
+        return cancel_mv_hor;
+    }
+
+    // // Find horizontal cancelation
+    // auto cancel_hor = Finder::cancel_horizontal(heights, placement, pair, locks);
+
+    // if (!cancel_hor.empty()) {
+    //     return cancel_hor;
+    // }
+
+    // Find vertical cancelation
+    // auto cancel_ver = Finder::cancel_vertical(heights, placement, pair, locks);
+
+    // if (!cancel_ver.empty()) {
+    //     return cancel_ver;
+    // }
+
+    return {};
+};
+
+Queue Finder::cancel_horizontal(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks)
+{
+    if (placement.r == Direction::Type::UP || placement.r == Direction::Type::DOWN) {
+        return {};
+    }
+
+    if (placement.x == 2) {
+        return {};
+    }
+
+    if (placement.r == Direction::Type::RIGHT && placement.x > 2 && height[placement.x] == height[placement.x + 1] && height[placement.x] >= height[placement.x - 1]) {
+        auto queue = locks.get(placement.x - 1, Direction::Type::RIGHT);
+
+        queue.push_back(Path::Input::TOUCH);
+        queue.push_back(Path::Input::RIGHT);
+        queue.push_back(Path::Input::DROP);
+
+        return queue;
+    }
+
+    if (placement.r == Direction::Type::LEFT && placement.x < 2 && height[placement.x] == height[placement.x - 1] && height[placement.x] >= height[placement.x + 1]) {
+        auto queue = locks.get(placement.x + 1, Direction::Type::LEFT);
+
+        queue.push_back(Path::Input::TOUCH);
+        queue.push_back(Path::Input::LEFT);
+        queue.push_back(Path::Input::DROP);
+
+        return queue;
+    }
+
+    return {};
+};
+
+Queue Finder::cancel_vertical(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks)
+{
+    if (placement.r == Direction::Type::RIGHT || placement.r == Direction::Type::LEFT) {
+        return {};
+    }
+
+    if (placement.x == 2) {
+        return {};
+    }
+
+    // Left
+    if (placement.x < 2 && height[placement.x] > height[placement.x + 1]) {
+        auto queue = locks.get(placement.x + 1, placement.r);
+
+        if (placement.x + 1 == 2 && placement.r == Direction::Type::UP) {
+            queue = {};
+        }
+
+        queue.push_back(Path::Input::TOUCH);
+        queue.push_back(Path::Input::LEFT);
+        queue.push_back(Path::Input::DROP);
+
+        return queue;
+    }
+
+    // Right
+    if (placement.x > 2 && height[placement.x] > height[placement.x - 1]) {
+        auto queue = locks.get(placement.x - 1, placement.r);
+
+        if (placement.x + 1 == 2 && placement.r == Direction::Type::UP) {
+            queue = {};
+        }
+
+        queue.push_back(Path::Input::TOUCH);
+        queue.push_back(Path::Input::RIGHT);
+        queue.push_back(Path::Input::DROP);
+
+        return queue;
+    }
+
+    return {};
+};
+
+Queue Finder::cancel_movement_horizontal(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks)
+{
+    if (placement.r == Direction::Type::UP || placement.r == Direction::Type::DOWN) {
+        return {};
+    }
+
+    if (pair.first == pair.second) {
+        if (placement.r == Direction::Type::RIGHT && placement.x <= 2) {
+            placement.x += 1;
+            placement.r = Direction::Type::LEFT;
+        }
+        else if (placement.r == Direction::Type::LEFT && placement.x >= 2) {
+            placement.x -= 1;
+            placement.r = Direction::Type::RIGHT;
+        }
+    }
+
+    if (placement.x == 2) {
+        return {};
+    }
+
+    if (placement.r == Direction::Type::RIGHT) {
+        // Left
+        if (placement.x < 2 && height[placement.x] == height[placement.x + 1] && height[placement.x] >= height[placement.x + 2]) {
+            // auto queue = locks.get(placement.x + 1, Direction::Type::UP);
+
+            Path::Queue queue;
+
+            for (i32 i = 0; i < 1 - placement.x; ++i) {
+                if (!queue.empty() && queue.back() == Path::Input::LEFT) {
+                    queue.push_back(Path::Input::NONE);
+                }
+
+                queue.push_back(Path::Input::LEFT);
+            }
+
+            if (placement.x + 1 == 2) {
+                queue = {};
+            }
+
+            queue.push_back(Path::Input::TOUCH);
+            queue.push_back(Path::Input::CW);
+            queue.push_back(Path::Input::TOUCH);
+            // queue.push_back(Path::Input::WAIT);
+            queue.push_back(Path::Input::LEFT);
+            queue.push_back(Path::Input::DROP);
+
+            return queue;
+        }
+
+        // Right
+        if (placement.x > 2 && height[placement.x] == height[placement.x + 1] && height[placement.x] >= height[placement.x - 1]) {
+            // auto queue = locks.get(placement.x - 1, Direction::Type::UP);
+
+            Path::Queue queue;
+
+            for (i32 i = 0; i < placement.x - 3; ++i) {
+                if (!queue.empty() && queue.back() == Path::Input::RIGHT) {
+                    queue.push_back(Path::Input::NONE);
+                }
+
+                queue.push_back(Path::Input::RIGHT);
+            }
+
+            if (placement.x - 1 == 2) {
+                queue = {};
+            }
+
+            queue.push_back(Path::Input::TOUCH);
+            queue.push_back(Path::Input::CW);
+            queue.push_back(Path::Input::TOUCH);
+            // queue.push_back(Path::Input::WAIT);
+            queue.push_back(Path::Input::RIGHT);
+            queue.push_back(Path::Input::DROP);
+
+            return queue;
+        }
+    }
+
+    if (placement.r == Direction::Type::LEFT) {
+        // Left
+        if (placement.x < 2 && height[placement.x] == height[placement.x - 1] && height[placement.x] >= height[placement.x + 1]) {
+            // auto queue = locks.get(placement.x + 1, Direction::Type::UP);
+
+            Path::Queue queue;
+
+            for (i32 i = 0; i < 1 - placement.x; ++i) {
+                if (!queue.empty() && queue.back() == Path::Input::LEFT) {
+                    queue.push_back(Path::Input::NONE);
+                }
+
+                queue.push_back(Path::Input::LEFT);
+            }
+
+            if (placement.x + 1 == 2) {
+                queue = {};
+            }
+
+            queue.push_back(Path::Input::TOUCH);
+            queue.push_back(Path::Input::CCW);
+            queue.push_back(Path::Input::TOUCH);
+            // queue.push_back(Path::Input::WAIT);
+            queue.push_back(Path::Input::LEFT);
+            queue.push_back(Path::Input::DROP);
+
+            return queue;
+        }
+
+        // Right
+        if (placement.x > 2 && height[placement.x] == height[placement.x - 1] && height[placement.x] >= height[placement.x - 2]) {
+            // auto queue = locks.get(placement.x - 1, Direction::Type::UP);
+
+            Path::Queue queue;
+
+            for (i32 i = 0; i < placement.x - 3; ++i) {
+                if (!queue.empty() && queue.back() == Path::Input::RIGHT) {
+                    queue.push_back(Path::Input::NONE);
+                }
+
+                queue.push_back(Path::Input::RIGHT);
+            }
+
+            if (placement.x - 1 == 2) {
+                queue = {};
+            }
+
+            queue.push_back(Path::Input::TOUCH);
+            queue.push_back(Path::Input::CCW);
+            queue.push_back(Path::Input::TOUCH);
+            // queue.push_back(Path::Input::WAIT);
+            queue.push_back(Path::Input::RIGHT);
+            queue.push_back(Path::Input::DROP);
+
+            return queue;
+        }
+    }
+
+    return {};
+};
+
+Queue Finder::cancel_movement_vertical(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks)
+{
+    if (placement.r == Direction::Type::RIGHT || placement.r == Direction::Type::LEFT) {
+        return {};
+    }
+
+    if (placement.x == 2) {
+        return {};
+    }
+
+    // Left
+    if (placement.x < 2 && height[placement.x] == height[placement.x + 1]) {
+        auto direction = Direction::Type::LEFT;
+
+        if (height[placement.x + 1] >= height[placement.x + 2]) {
+            direction = Direction::Type::RIGHT;
+        }
+
+        // auto queue = locks.get(placement.x + 1, direction);
+
+        Path::Queue queue;
+
+        if (direction == Direction::Type::LEFT) {
+            queue.push_back(Path::Input::CCW);
+        }
+        else {
+            queue.push_back(Path::Input::CW);
+        }
+
+        for (i32 i = 0; i < 1 - placement.x; ++i) {
+            if (!queue.empty() && queue.back() == Path::Input::LEFT) {
+                queue.push_back(Path::Input::NONE);
+            }
+
+            queue.push_back(Path::Input::LEFT);
+        }
+
+        queue.push_back(Path::Input::TOUCH);
+
+        if (Direction::get_rotate_cw(direction) == placement.r) {
+            queue.push_back(Path::Input::CW);
+        }
+        else if (Direction::get_rotate_ccw(direction) == placement.r) {
+            queue.push_back(Path::Input::CCW);
+        }
+
+        queue.push_back(Path::Input::NONE);
+        queue.push_back(Path::Input::LEFT);
+        queue.push_back(Path::Input::DROP);
+
+        return queue;
+    }
+
+    // Right
+    if (placement.x > 2 && height[placement.x] == height[placement.x - 1]) {
+        auto direction = Direction::Type::RIGHT;
+
+        if (height[placement.x - 1] >= height[placement.x - 2]) {
+            direction = Direction::Type::LEFT;
+        }
+
+        // auto queue = locks.get(placement.x - 1, direction);
+
+        Path::Queue queue;
+
+        if (direction == Direction::Type::LEFT) {
+            queue.push_back(Path::Input::CCW);
+        }
+        else {
+            queue.push_back(Path::Input::CW);
+        }
+
+        for (i32 i = 0; i < placement.x - 3; ++i) {
+            if (!queue.empty() && queue.back() == Path::Input::RIGHT) {
+                queue.push_back(Path::Input::NONE);
+            }
+
+            queue.push_back(Path::Input::RIGHT);
+        }
+
+        queue.push_back(Path::Input::TOUCH);
+
+        if (Direction::get_rotate_cw(direction) == placement.r) {
+            queue.push_back(Path::Input::CW);
+        }
+        else if (Direction::get_rotate_ccw(direction) == placement.r) {
+            queue.push_back(Path::Input::CCW);
+        }
+
+        queue.push_back(Path::Input::NONE);
+        queue.push_back(Path::Input::RIGHT);
+        queue.push_back(Path::Input::DROP);
+
+        return queue;
+    }
+
+    return {};
+};
+
+Queue Finder::cancel_step(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks)
+{
+    if (placement.r == Direction::Type::RIGHT || placement.r == Direction::Type::LEFT) {
+        return {};
+    }
+
+    if (placement.x == 2) {
+        return {};
+    }
+
+    // Hole on the left
+    if (placement.x < 2 && height[placement.x] + 1 == height[placement.x + 1]) {
+        auto direction = Direction::Type::LEFT;
+
+        if (height[placement.x + 1] >= height[placement.x + 2]) {
+            direction = Direction::Type::RIGHT;
+        }
+
+        // auto queue = locks.get(placement.x + 1, direction);
+
+        Path::Queue queue;
+
+        if (direction == Direction::Type::LEFT) {
+            queue.push_back(Path::Input::CCW);
+        }
+        else {
+            queue.push_back(Path::Input::CW);
+        }
+
+        for (i32 i = 0; i < 1 - placement.x; ++i) {
+            if (!queue.empty() && queue.back() == Path::Input::LEFT) {
+                queue.push_back(Path::Input::NONE);
+            }
+
+            queue.push_back(Path::Input::LEFT);
+        }
+
+        queue.push_back(Path::Input::TOUCH);
+
+        if (Direction::get_rotate_cw(direction) == placement.r) {
+            queue.push_back(Path::Input::CW);
+        }
+        else if (Direction::get_rotate_ccw(direction) == placement.r) {
+            queue.push_back(Path::Input::CCW);
+        }
+
+        queue.push_back(Path::Input::NONE);
+        queue.push_back(Path::Input::LEFT);
+        queue.push_back(Path::Input::DROP);
+
+        return queue;
+    }
+
+    // Hole on the right
+    if (placement.x > 2 && height[placement.x] + 1 == height[placement.x - 1]) {
+        auto direction = Direction::Type::RIGHT;
+
+        if (height[placement.x - 1] >= height[placement.x - 2]) {
+            direction = Direction::Type::LEFT;
+        }
+
+        // auto queue = locks.get(placement.x - 1, direction);
+
+        Path::Queue queue;
+
+        if (direction == Direction::Type::LEFT) {
+            queue.push_back(Path::Input::CCW);
+        }
+        else {
+            queue.push_back(Path::Input::CW);
+        }
+
+        for (i32 i = 0; i < placement.x - 3; ++i) {
+            if (!queue.empty() && queue.back() == Path::Input::RIGHT) {
+                queue.push_back(Path::Input::NONE);
+            }
+
+            queue.push_back(Path::Input::RIGHT);
+        }
+
+        queue.push_back(Path::Input::TOUCH);
+
+        if (Direction::get_rotate_cw(direction) == placement.r) {
+            queue.push_back(Path::Input::CW);
+        }
+        else if (Direction::get_rotate_ccw(direction) == placement.r) {
+            queue.push_back(Path::Input::CCW);
+        }
+
+        queue.push_back(Path::Input::NONE);
+        queue.push_back(Path::Input::RIGHT);
+        queue.push_back(Path::Input::DROP);
+
+        return queue;
+    }
+
+    return {};
 };
 
 };

@@ -39,7 +39,14 @@ void generate(
     i8 x_max,
     i8 x_ban,
     i32 drop,
-    std::function<void(i8, i8, i32)> callback
+    std::function<void(i8, i8, i8, i8)> callback
+);
+
+void get_bound(
+    u8 heights[6],
+    i8 x_ban,
+    i8& x_min,
+    i8& x_max
 );
 
 };

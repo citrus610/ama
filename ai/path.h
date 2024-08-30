@@ -13,8 +13,13 @@ enum class Input
     CCW,
     M180,
     DROP,
-    NONE,
-    WAIT
+    WAIT,
+    TOUCH,
+    CW_LEFT,
+    CW_RIGHT,
+    CCW_LEFT,
+    CCW_RIGHT,
+    NONE
 };
 
 typedef std::vector<Input> Queue;
@@ -35,6 +40,7 @@ public:
     bool is_colliding(u8 height[6]);
 public:
     void normalize();
+    void denormalize();
 };
 
 class PositionMap
@@ -73,10 +79,19 @@ public:
     };
 public:
     static Queue find(Field& field, Move::Placement placement, Cell::Pair pair);
+    static PlacementMap generate_placements(Field& field, Move::Placement placement, Cell::Pair pair);
     static void expand(Field& field, u8 height[6], Node& node, std::vector<Node>& queue, PositionMap& queue_map);
     static void lock(Node& node, PlacementMap& locks_map, bool equal_pair);
-    static bool above_stack_move(Field& field, Move::Placement placement);
     static Queue get_queue_convert_m180(Queue& queue);
+public:
+    static bool above_stack_move(Field& field, Move::Placement placement, u8 stack = 8);
+public:
+    static Queue find_cancel(Field& field, Move::Placement placement, Cell::Pair pair);
+    static Queue cancel_horizontal(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks);
+    static Queue cancel_vertical(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks);
+    static Queue cancel_movement_horizontal(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks);
+    static Queue cancel_movement_vertical(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks);
+    static Queue cancel_step(u8 height[6], Move::Placement placement, Cell::Pair pair, PlacementMap& locks);
 };
 
 static void print(Queue queue)
@@ -104,6 +119,12 @@ static void print(Queue queue)
             break;
         case Input::NONE:
             printf("_ ");
+            break;
+        case Input::WAIT:
+            printf("WAIT ");
+            break;
+        case Input::TOUCH:
+            printf("TOUCH ");
             break;
         default:
             break;

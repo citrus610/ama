@@ -15,7 +15,9 @@ struct Data
     i32 frame = 0;
     i32 frame_real = 0;
     i32 redundancy = INT32_MAX;
+    i32 link = 0;
     bool all_clear = false;
+    Field parent = Field();
     Field result = Field();
 };
 

@@ -2,8 +2,8 @@
 
 #include "search/build.h"
 #include "search/attack.h"
-#include "gaze.h"
 #include "path.h"
+#include "gaze.h"
 
 #include <functional>
 

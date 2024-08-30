@@ -13,21 +13,9 @@ void search(
     u8 heights[6];
     field.get_heights(heights);
 
-    i8 x_min = 0;
-    for (i8 i = 2; i >= 0; --i) {
-        if (heights[i] > 11) {
-            x_min = i + 1;
-            break;
-        }
-    }
-
-    i8 x_max = 5;
-    for (i8 i = 2; i < 6; ++i) {
-        if (heights[i] > 11) {
-            x_max = i - 1;
-            break;
-        }
-    }
+    i8 x_min;
+    i8 x_max;
+    Quiet::get_bound(heights, -1, x_min, x_max);
 
     Quiet::generate(
         field,
@@ -35,14 +23,18 @@ void search(
         x_max,
         -1,
         drop,
-        [&] (i8 x, i8 p, i32 need) {
-            auto copy = field;
-
-            for (i32 i = 0; i < need; ++i) {
-                copy.data[p].set_bit(x, heights[x] + i);
+        [&] (i8 x, i8 p, i8 need, i8 dir) {
+            if (dir != 0) {
+                return;
             }
 
-            auto sim = copy;
+            auto plan = field;
+
+            for (i32 i = 0; i < need; ++i) {
+                plan.data[p].set_bit(x, heights[x] + i);
+            }
+
+            auto sim = plan;
             auto sim_mask = sim.pop();
             auto sim_chain = Chain::get_score(sim_mask);
 
@@ -52,7 +44,7 @@ void search(
                     .score = sim_chain.score,
                     .x = x,
                     .depth = 0,
-                    .plan = copy,
+                    .plan = plan,
                     .remain = sim
                 });
             }
@@ -79,12 +71,19 @@ void search(
             if (!extendable) {
                 return;
             }
+
+            u8 plan_heights[6];
+            plan.get_heights(plan_heights);
+
+            i8 plan_x_min;
+            i8 plan_x_max;
+            Quiet::get_bound(plan_heights, x, plan_x_min, plan_x_max);
             
             Quiet::dfs(
                 sim,
-                copy,
-                x_min,
-                x_max,
+                plan,
+                plan_x_min,
+                plan_x_max,
                 x,
                 sim_chain.count,
                 depth - 1,
@@ -114,22 +113,46 @@ void dfs(
         x_max,
         x_ban,
         2,
-        [&] (i8 x, i8 p, i32 need) {
+        [&] (i8 x, i8 p, i8 need, i8 dir) {
             if (i32(pre_heights[x]) + need + (x == 2) > 12) {
                 return;
             }
 
-            auto copy = pre;
+            auto plan = pre;
             
-            for (i32 i = 0; i < need; ++i) {
-                copy.data[p].set_bit(x, pre_heights[x] + i);
+            switch (dir)
+            {
+            case 0:
+                for (i32 i = 0; i < need; ++i) {
+                    plan.data[p].set_bit(x, pre_heights[x] + i);
+                }
+                break;
+            case 1:
+                plan.data[p].set_bit(x, pre_heights[x]);
+                plan.data[p].set_bit(x + 1, pre_heights[x + 1]);
+                break;
+            case -1:
+                plan.data[p].set_bit(x, pre_heights[x]);
+                plan.data[p].set_bit(x - 1, pre_heights[x - 1]);
+                break;
             }
 
-            if (copy.data[p].get_mask_group_4(x, pre_heights[x]).get_count() > 3) {
+            if (plan.data[p].get_mask_group_4(x, pre_heights[x]).get_count() > 3) {
                 return;
             }
 
-            auto sim = copy;
+            u8 plan_heights[6];
+            plan.get_heights(plan_heights);
+
+            i8 plan_x_min;
+            i8 plan_x_max;
+            Quiet::get_bound(plan_heights, x_ban, plan_x_min, plan_x_max);
+
+            if (x_ban + 1 < plan_x_min || plan_x_max + 1 < x_ban) {
+                return;
+            }
+
+            auto sim = plan;
             auto sim_mask = sim.pop();
 
             if (sim_mask.get_size() > pre_count) {
@@ -140,16 +163,16 @@ void dfs(
                     .score = sim_chain.score,
                     .x = x_ban,
                     .depth = depth,
-                    .plan = copy,
+                    .plan = plan,
                     .remain = sim
                 });
 
                 if (depth > 1) {
                     Quiet::dfs(
                         sim,
-                        copy,
-                        x_min,
-                        x_max,
+                        plan,
+                        plan_x_min,
+                        plan_x_max,
                         x_ban,
                         sim_chain.count,
                         depth - 1,
@@ -167,7 +190,7 @@ void generate(
     i8 x_max,
     i8 x_ban,
     i32 drop,
-    std::function<void(i8, i8, i32)> callback
+    std::function<void(i8, i8, i8, i8)> callback
 )
 {
     u8 heights[6];
@@ -178,22 +201,10 @@ void generate(
             continue;
         }
 
+        bool expand_r = x < 5 && x + 1 != x_ban && heights[x] == heights[x + 1] && !(x == 1 && heights[2] == 11);
+        bool expand_l = x > 0 && x - 1 != x_ban && heights[x] == heights[x - 1] && !(x == 3 && heights[2] == 11);
+
         i32 drop_max = std::min(drop, 12 - i32(heights[x]) - i32(x == 2));
-
-        // i32 height_l = 13;
-        // i32 height_r = 13;
-
-        // if (x > 0) {
-        //     height_l = heights[x - 1];
-        // }
-
-        // if (x < 5) {
-        //     height_r = heights[x + 1];
-        // }
-
-        // if (heights[x] < height_l && heights[x] < height_r && height_l >= 11 && height_r >= 11) {
-        //     drop_max = std::min(drop_max, std::max(0, 12 - height_l) + std::max(0, 12 - height_r));
-        // }
 
         if (drop_max <= 0) {
             continue;
@@ -201,15 +212,53 @@ void generate(
 
         for (u8 p = 0; p < Cell::COUNT - 1; ++p) {
             auto copy = field;
+            bool call = false;
 
             for (u8 i = 0; i < drop_max; ++i) {
                 copy.data[p].set_bit(x, heights[x] + i);
 
                 if (copy.data[p].get_mask_group_4(x, heights[x]).get_count() >= 4) {
-                    callback(x, p, i + 1);
+                    call = true;
+                    callback(x, p, i + 1, 0);
                     break;
                 }
             }
+
+            if (drop_max > 1 && call) {
+                if (expand_r && field.data[p].get_bit(x + 1, heights[x] - 1) == 0) {
+                    callback(x, p, drop_max, 1);
+                }
+
+                if (expand_l && field.data[p].get_bit(x - 1, heights[x] - 1) == 0) {
+                    callback(x, p, drop_max, -1);
+                }
+            }
+        }
+    }
+};
+
+void get_bound(
+    u8 heights[6],
+    i8 x_ban,
+    i8& x_min,
+    i8& x_max
+)
+{
+    x_min = 0;
+
+    for (i8 i = 2; i >= 0; --i) {
+        if (heights[i] > 11 && i != x_ban) {
+            x_min = i + 1;
+            break;
+        }
+    }
+
+    x_max = 5;
+
+    for (i8 i = 2; i < 6; ++i) {
+        if (heights[i] > 11 && i != x_ban) {
+            x_max = i - 1;
+            break;
         }
     }
 };

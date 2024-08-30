@@ -99,6 +99,10 @@ bool is_valid(u8 heights[6], u8 row14, i8 x, Direction::Type r)
         return true;
     }
 
+    if (heights[1] > 11 && heights[3] > 11) {
+        return true;
+    }
+
     for (i8 i = 0; check_12[height_12_idx][i] != -1; ++i) {
         if (heights[check_12[height_12_idx][i]] > 11) {
             break;

@@ -13,7 +13,7 @@ Result think_1p(
 )
 {
     auto bsearch = Build::search(field, { queue[0], queue[1] }, w);
-    auto asearch = Attack::search(field, queue);
+    auto asearch = Attack::search(field, queue, false);
 
     return AI::build(bsearch, asearch, all_clear, trigger, stretch);
 };
@@ -132,6 +132,7 @@ Result build(
     return AI::RESULT_DEFAULT;
 };
 
+
 Result think_2p(
     Gaze::Player self,
     Gaze::Player enemy,
@@ -145,56 +146,53 @@ Result think_2p(
     bool stretch
 )
 {
-    // Check field count and use human's forms
+    // Check field count and use forms
     i32 field_count = self.field.get_count();
 
-    if (field_count >= 30 || self.field.data[static_cast<i32>(Cell::Type::GARBAGE)].get_count() > 0) {
+    if (field_count >= 36 || self.field.data[static_cast<i32>(Cell::Type::GARBAGE)].get_count() > 0) {
         form = false;
     }
 
     // Get attack balance
     i32 balance = self.attack - enemy.attack;
 
-    // Gaze the enemy's field
+    // Speculate enemy's garbage dropping
     if (enemy.attack_frame > 0) {
         enemy.queue.erase(enemy.queue.begin());
 
-        if (balance >= 5) {
+        if (balance >= 3) {
             enemy.field.drop_garbage(balance);
         }
     }
 
-    auto enemy_asearch = Attack::search(enemy.field, enemy.queue, false);
-    auto enemy_gaze = Gaze::gaze(enemy.field, enemy_asearch, 4);
+    if (enemy.dropping > 0) {
+        if (balance >= 3) {
+            enemy.field.drop_garbage(balance);
+        }
+    }
+
+    // Get attacks
+    auto self_attacks = Attack::search(self.field, { self.queue[0], self.queue[1] });
+    auto enemy_attacks = Attack::search(enemy.field, { enemy.queue[0], enemy.queue[1] });
+
+    // Gaze enemy's field
+    auto enemy_gaze = Gaze::gaze(enemy.field, enemy_attacks, enemy.attack_frame + (enemy.dropping > 0) * 2);
 
     bool enemy_small_field = Gaze::is_small_field(enemy.field, self.field);
-    bool enemy_garbage_obstruct = Gaze::is_garbage_obstruct(enemy.field, Chain::Score { .count = enemy_gaze.main.count, .score = enemy_gaze.main.score });
+    bool enemy_garbage_obstruct = Gaze::is_garbage_obstruct(enemy.field, Chain::Score { .score = std::max(enemy_gaze.main.score, enemy_gaze.main_fast.score ) });
 
     i32 enemy_harass_max = 0;
     i32 enemy_harass_fast_max = 0;
-    i32 enemy_harass_fast_2_max = 0;
     i32 enemy_early_attack = 0;
 
     for (auto& attack : enemy_gaze.harass) {
         enemy_harass_max = std::max(enemy_harass_max, attack.score / target_point);
-    }
 
-    for (auto& attack : enemy_gaze.harass_fast) {
-        enemy_harass_fast_max = std::max(enemy_harass_fast_max, attack.score / target_point);
-
-        if (attack.count < 3) {
-            enemy_harass_fast_2_max = std::max(enemy_harass_fast_2_max, attack.score / target_point);
+        if (attack.frame_real <= 4) {
+            enemy_harass_fast_max = std::max(enemy_harass_fast_max, attack.score / target_point);
         }
 
-        if (attack.result.get_count() < 6) {
-            if (attack.score / target_point < 12) {
-                continue;
-            }
-
-            if (attack.count > 2) {
-                continue;
-            }
-
+        if (attack.result.get_count() <= 6 && attack.score / target_point >= 12 && attack.count <= 2) {
             enemy_early_attack = std::max(enemy_early_attack, attack.score / target_point);
         }
     }
@@ -217,18 +215,17 @@ Result think_2p(
                         best,
                         { c.placement, attack },
                         [&] (const std::pair<Move::Placement, Attack::Data>& a, const std::pair<Move::Placement, Attack::Data>& b) {
-                            if (a.second.score_total == b.second.score_total) {
+                            if (a.second.score == b.second.score) {
                                 return a.second.frame_real > b.second.frame_real;
                             }
-                            return a.second.score_total < b.second.score_total;
+
+                            return a.second.score < b.second.score;
                         }
                     );
                 }
             }
 
             if (best.second.count > 0) {
-                // printf("rac\n");
-
                 return Result {
                     .placement = best.first,
                     .plan = std::nullopt,
@@ -275,7 +272,7 @@ Result think_2p(
                             return a.second.score < b.second.score;
                         }
 
-                        if (a.second.score != b.second.score) {
+                        if (std::abs(a.second.score - b.second.score) / target_point > 6) {
                             return a.second.score < b.second.score;
                         }
 
@@ -288,7 +285,9 @@ Result think_2p(
                 for (auto& attack : c.attacks) {
                     find_best(c.placement, attack);
                 }
+            }
 
+            for (auto& c : self_attacks.candidates) {
                 for (auto& attack : c.attacks_detect) {
                     find_best(c.placement, attack);
                 }
@@ -299,7 +298,8 @@ Result think_2p(
                     enemy_attack >= 90 ||
                     enemy_small_field ||
                     enemy_garbage_obstruct) {
-                    // printf("mf\n");
+                    printf("bf\n");
+
                     return Result {
                         .placement = best.first,
                         .plan = std::nullopt,
@@ -315,6 +315,7 @@ Result think_2p(
         std::vector<std::pair<Move::Placement, Attack::Data>> attacks_small;
         std::vector<std::pair<Move::Placement, Attack::Data>> attacks_desperate;
 
+        // Classify return attacks
         auto classify_attack = [&] (Move::Placement placement, Attack::Data& attack) {
             if (attack.frame > enemy.attack_frame) {
                 return;
@@ -322,32 +323,38 @@ Result think_2p(
 
             i32 attack_send = (attack.score + self.bonus_point) / target_point;
 
+            // Check for syncro attacks
             if ((attack_send >= enemy_attack + 18 && attack.frame_real + attack.count * 2 <= enemy.attack_frame + 3) ||
                 (attack_send >= enemy_attack + 12 && attack.frame_real + attack.count * 2 <= enemy.attack_frame + 2)) {
                 attacks_syncro.push_back({ placement, attack });
             }
 
             if (attack_send >= enemy_attack) {
+                // Return main chain
                 if (attack.result.get_count() < std::max(24, field_count / 2)) {
                     attacks_main.push_back({ placement, attack });
                     return;
                 }
 
-                if (attack_send >= enemy_harass_fast_max + enemy_attack - 12 ||
+                // Return small chain while checking possible enemy's harass
+                if (attack_send >= enemy_harass_max + enemy_attack - 12 ||
                     attack.frame_real + attack.count * 2 <= enemy.attack_frame + 2) {
-                    attack.redundancy = Gaze::get_redundancy(self.field, attack.result);
+                    attack.redundancy = Gaze::get_redundancy(attack.parent, attack.result);
                     attacks_small.push_back({ placement, attack });
                 }
 
                 return;
             }
 
+            // Check for small returns that
             if (attack_send >= enemy_attack - 6 &&
-                attack.result.get_height(2) < 11 &&
-                enemy_harass_fast_max < 6 &&
+                attack.result.get_height(2) < 10 &&
+                enemy_attack >= 12 &&
+                enemy.attack_frame <= 4 &&
+                enemy_harass_max < 6 &&
                 !enemy_small_field &&
                 !enemy_garbage_obstruct) {
-                attack.redundancy = Gaze::get_redundancy(self.field, attack.result);
+                attack.redundancy = Gaze::get_redundancy(attack.parent, attack.result);
                 attack.redundancy += enemy_attack - attack_send;
                 attacks_small.push_back({ placement, attack });
                 return;
@@ -368,16 +375,17 @@ Result think_2p(
             for (auto& attack : c.attacks) {
                 classify_attack(c.placement, attack);
             }
+        }
 
+        for (auto& c : self_attacks.candidates) {
             for (auto& attack : c.attacks_detect) {
                 classify_attack(c.placement, attack);
             }
         }
 
+        // If there is a fast and big attack then do it immediately
+        // TLDR: Cross attack
         if (!attacks_syncro.empty() && style.defense == Style::Defense::STRONG) {
-            // If there is a fast and big attack then do it immediately
-            // TLDR: Cross attack
-
             auto best_syncro = *std::max_element(
                 attacks_syncro.begin(),
                 attacks_syncro.end(),
@@ -390,7 +398,7 @@ Result think_2p(
                 }
             );
 
-            // printf("sync\n");
+            printf("cross\n");
 
             return Result {
                 .placement = best_syncro.first,
@@ -401,12 +409,10 @@ Result think_2p(
 
         // Check if we can accept garbage
         i32 accept_limit = Gaze::get_accept_limit(self.field);
-
-        // Get resource balance
         i32 resource_balance = Gaze::get_resource_balance(self.field, enemy.field);
 
         if (resource_balance <= -12) {
-            accept_limit = (std::abs(resource_balance) / 6 + 1) * 6;
+            accept_limit = std::max(accept_limit, (std::abs(resource_balance) / 6 + 1) * 6);
         }
 
         if (enemy_attack <= accept_limit &&
@@ -417,9 +423,6 @@ Result think_2p(
                 build_type = Build::Type::BUILD;
             }
 
-            // TODO: implement countering
-            // Plan: search for possible placements that can accept garbages
-
             if (bsearch.empty()) {
                 auto b_result = Build::search(self.field, { self.queue[0], self.queue[1] }, w[build_type]);
                 return AI::build(b_result, asearch, true, trigger, stretch);
@@ -428,23 +431,22 @@ Result think_2p(
             return AI::build(bsearch[build_type], asearch, true, trigger, stretch);
         }
 
+        // Return small attack
         if (!attacks_small.empty()) {
-            // Return small attack
-
             auto best_small = *std::max_element(
                 attacks_small.begin(),
                 attacks_small.end(),
                 [&] (const std::pair<Move::Placement, Attack::Data>& a, const std::pair<Move::Placement, Attack::Data>& b) {
-                    i32 a_redundancy_over = a.second.redundancy > 6;
-                    i32 b_redundancy_over = b.second.redundancy > 6;
+                    i32 a_redundancy_over = a.second.redundancy > 4;
+                    i32 b_redundancy_over = b.second.redundancy > 4;
 
                     if (a_redundancy_over != b_redundancy_over) {
                         return a_redundancy_over > b_redundancy_over;
                     }
 
                     if (style.defense == Style::Defense::STRONG) {
-                        i32 a_over_enemy_gaze = (a.second.score + self.bonus_point) / target_point >= enemy_attack + enemy_harass_fast_max;
-                        i32 b_over_enemy_gaze = (b.second.score + self.bonus_point) / target_point >= enemy_attack + enemy_harass_fast_max;
+                        i32 a_over_enemy_gaze = (a.second.score + self.bonus_point) / target_point >= enemy_attack + enemy_harass_max;
+                        i32 b_over_enemy_gaze = (b.second.score + self.bonus_point) / target_point >= enemy_attack + enemy_harass_max;
 
                         if (a_over_enemy_gaze != a_over_enemy_gaze) {
                             return a_over_enemy_gaze < a_over_enemy_gaze;
@@ -461,20 +463,16 @@ Result think_2p(
                             return a.second.all_clear < b.second.all_clear;
                         }
 
-                        if (a.second.count != b.second.count) {
-                            return a.second.count > b.second.count;
-                        }
-
-                        if (enemy.attack_frame <= 2) {
-                            if (a.second.frame_real != b.second.frame_real) {
-                                return a.second.frame_real > b.second.frame_real;
-                            }
-
-                            return a.second.score < b.second.score;
+                        if (a.second.frame_real + 2 * a.second.count != b.second.frame_real + 2 * b.second.count) {
+                            return a.second.frame_real + 2 * a.second.count > b.second.frame_real + 2 * b.second.count;
                         }
 
                         if (a.second.score != b.second.score) {
                             return a.second.score < b.second.score;
+                        }
+
+                        if (a.second.link != b.second.link) {
+                            return a.second.link < b.second.link;
                         }
                     }
                     else if (style.defense == Style::Defense::WEAK) {
@@ -494,7 +492,7 @@ Result think_2p(
                 }
             );
 
-            // printf("smol\n");
+            printf("s\n");
 
             return Result {
                 .placement = best_small.first,
@@ -503,9 +501,12 @@ Result think_2p(
             };
         }
 
-        if (!attacks_main.empty()) {
-            // Return main chain
+        // TODO: check if we should receive or trigger the main chain
+        // Trigger main chain if we have no choice because enemy has a double attack combo
+        // Don't trigger but instead receive if the attack amount is small and we're not in danger
 
+        // Return main chain
+        if (!attacks_main.empty()) {
             auto best_main = *std::max_element(
                 attacks_main.begin(),
                 attacks_main.end(),
@@ -518,7 +519,7 @@ Result think_2p(
                 }
             );
 
-            // printf("m\n");
+            printf("b\n");
 
             return Result {
                 .placement = best_main.first,
@@ -527,9 +528,8 @@ Result think_2p(
             };
         }
 
-        if (!attacks_desperate.empty() && enemy.attack_frame <= 3) {
-            // If we can't return the attack, try the biggest attack
-
+        // If we can't return the attack, try the biggest attack
+        if (!attacks_desperate.empty() && enemy.attack_frame <= 3 && enemy_attack > std::min(accept_limit, 6)) {
             auto best_desperate = *std::max_element(
                 attacks_desperate.begin(),
                 attacks_desperate.end(),
@@ -542,7 +542,7 @@ Result think_2p(
                 }
             );
 
-            // printf("des\n");
+            printf("des\n");
 
             return Result {
                 .placement = best_desperate.first,
@@ -552,11 +552,14 @@ Result think_2p(
         }
 
         // If none possible, try to build fast
+        auto build_type = Build::Type::FAST;
 
-        auto build_type = Build::Type::SECOND_SMALL;
+        if (enemy.attack_frame > 8) {
+            build_type = Build::Type::FREESTYLE;
+        }
 
-        if (enemy.attack_frame >= 12) {
-            build_type = Build::Type::SECOND_BIG;
+        if (enemy_attack <= std::min(accept_limit, 6) && enemy.attack_frame <= 3) {
+            build_type = Build::Type::AC;
         }
 
         i32 enough = INT32_MAX;
@@ -575,8 +578,13 @@ Result think_2p(
 
     // If the enemy is triggering a chain but it isn't big enough, then try to trigger an attack fast
     if (balance >= 0 && enemy.attack_frame > 0 && style.attack == Style::Attack::STRONG) {
-        i32 enemy_height_2 = enemy.field.get_height(2);
-        i32 enemy_field_count = enemy.field.get_count();
+        u8 enemy_heights[6];
+        enemy.field.get_heights(enemy_heights);
+
+        i32 enemy_height_dt = 0;
+        for (auto i = 0; i < 5; ++i) {
+            enemy_height_dt = std::max(enemy_height_dt, std::abs(i32(enemy_heights[i]) - i32(enemy_heights[i + 1])));
+        }
 
         std::vector<std::pair<Move::Placement, Attack::Data>> attacks_syncro;
 
@@ -586,15 +594,10 @@ Result think_2p(
             }
 
             i32 attack_send = (attack.score + self.bonus_point) / target_point;
+            i32 attack_send_height = (attack_send / 6) + ((attack_send % 6) >= 3);
 
-            i32 attack_goal = 30;
-
-            if (enemy_height_2 >= 5 && enemy_field_count >= 30) {
-                attack_goal = 12;
-            }
-
-            if (attack_send >= attack_goal) {
-                attack.redundancy = Gaze::get_redundancy(self.field, attack.result);
+            if ((attack_send_height >= enemy_height_dt) || (attack_send_height + enemy_heights[2] >= 9)) {
+                attack.redundancy = Gaze::get_redundancy(attack.parent, attack.result);
                 attacks_syncro.push_back({ placement, attack });
             }
         };
@@ -625,15 +628,17 @@ Result think_2p(
                         return a.second.all_clear < b.second.all_clear;
                     }
 
-                    if (a.second.count != b.second.count) {
-                        return a.second.count > b.second.count;
+                    if (a.second.frame + a.second.count * 2 != b.second.frame + b.second.count * 2) {
+                        return a.second.frame_real + a.second.count * 2 > b.second.frame_real + b.second.count * 2;
                     }
 
-                    return a.second.frame > b.second.frame;
+                    if (a.second.score != b.second.score) {
+                        return a.second.score < b.second.score;
+                    }
+
+                    return a.second.frame_real > b.second.frame_real;
                 }
             );
-
-            // printf("sy hot\n");
 
             return Result {
                 .placement = best.first,
@@ -645,7 +650,13 @@ Result think_2p(
 
     // Kill
     if (enemy_garbage_obstruct) {
-        i32 attack_need = (enemy_gaze.main.score / target_point) + 72 - enemy.field.get_mask().get_mask_12().get_count() + enemy.all_clear * 30;
+        auto enemy_main = enemy_gaze.main;
+
+        if (enemy_gaze.main_fast.score > enemy_main.score) {
+            enemy_main = enemy_gaze.main_fast;
+        }
+
+        i32 attack_need = (enemy_main.score / target_point) + 72 - enemy.field.get_mask().get_mask_12().get_count() + enemy.all_clear * 30;
 
         std::vector<std::pair<Move::Placement, Attack::Data>> attacks_kill;
 
@@ -684,8 +695,6 @@ Result think_2p(
                 }
             );
 
-            // printf("kill\n");
-
             return Result {
                 .placement = best.first,
                 .plan = std::nullopt,
@@ -696,7 +705,7 @@ Result think_2p(
 
     // Harass
     // Don't harass if our resource is low
-    if (field_count >= 30 && field_count < 52 && style.attack != Style::Attack::NONE) {
+    if (((field_count >= 24 && field_count < 52) || (self.all_clear && !enemy.all_clear)) && style.attack != Style::Attack::NONE) {
         i32 attack_max = 0;
 
         for (auto& c : asearch.candidates) {
@@ -706,6 +715,9 @@ Result think_2p(
         }
 
         if (attack_max < trigger) {
+            u8 enemy_heights[6];
+            enemy.field.get_heights(enemy_heights);
+
             std::vector<std::pair<Move::Placement, Attack::Data>> attacks_harass;
             std::vector<std::pair<Move::Placement, Attack::Data>> attacks_prompt;
 
@@ -716,6 +728,11 @@ Result think_2p(
                 }
 
                 i32 attack_send = (attack.score_total + self.bonus_point) / target_point;
+                i32 attack_send_height = (attack_send / 6) + ((attack_send % 6) >= 3);
+
+                if (enemy_heights[2] + attack_send_height < 10) {
+                    return;
+                }
 
                 i32 attack_result_count = attack.result.get_count();
 
@@ -730,9 +747,9 @@ Result think_2p(
                 if (heights[0] < 4 ||
                     heights[1] < 4 ||
                     heights[2] < 4 ||
-                    heights[3] < 4 ||
-                    heights[4] < 4 ||
-                    heights[5] < 4) {
+                    heights[3] < 3 ||
+                    heights[4] < 3 ||
+                    heights[5] < 3) {
                     return;
                 }
 
@@ -742,29 +759,33 @@ Result think_2p(
                 }
 
                 // Remove attacks that change the field a lot
-                attack.redundancy = Gaze::get_redundancy(self.field, attack.result);
-                if (attack.redundancy >= 6) {
+                attack.redundancy = Gaze::get_redundancy(attack.parent, attack.result);
+                if (attack.redundancy > 4) {
                     return;
                 }
 
                 if (style.attack == Style::Attack::STRONG) {
-                    if (attack.count == 2 && attack.score / target_point <= 6) {
+                    if (attack.count == 2 && attack.score / target_point < 12) {
                         return;
                     }
 
-                    if (attack.count == 2 &&
-                        enemy_gaze.defence_2dub.count >= 4 &&
-                        attack_result_count < 30) {
+                    if (attack.count == 3 && attack.score / target_point <= 20) {
                         return;
                     }
 
-                    if (attack.count == 1 && (attack_send >= enemy_gaze.defence_1dub.score / target_point)) {
+                    if (attack.count == 1 && (attack_send - 6 >= enemy_gaze.defence_1dub.score / target_point)) {
                         attacks_harass.push_back({ placement, attack });
                         return;
                     }
 
-                    if (attack_send >= enemy_harass_fast_max) {
+                    if (attack.count == 2 && (attack_send - 12 >= enemy_gaze.defence_2dub.score / target_point)) {
                         attacks_harass.push_back({ placement, attack });
+                        return;
+                    }
+
+                    if (attack.count == 3 && (attack_send - 12 >= enemy_gaze.defence_3dub.score / target_point)) {
+                        attacks_harass.push_back({ placement, attack });
+                        return;
                     }
                 }
                 else if (style.attack == Style::Attack::WEAK) {
@@ -806,8 +827,8 @@ Result think_2p(
                 }
 
                 // Remove attacks that change the field a lot
-                attack.redundancy = Gaze::get_redundancy(self.field, attack.result);
-                if (attack.redundancy >= 5) {
+                attack.redundancy = Gaze::get_redundancy(attack.parent, attack.result);
+                if (attack.redundancy > 2) {
                     return;
                 }
 
@@ -830,10 +851,6 @@ Result think_2p(
                     attacks_harass.begin(),
                     attacks_harass.end(),
                     [&] (const std::pair<Move::Placement, Attack::Data>& a, const std::pair<Move::Placement, Attack::Data>& b) {
-                        if (a.second.count != b.second.count) {
-                            return a.second.count > b.second.count;
-                        }
-
                         i32 a_enough = (a.second.score + self.bonus_point) / target_point >= enemy_harass_fast_max + 6;
                         i32 b_enough = (b.second.score + self.bonus_point) / target_point >= enemy_harass_fast_max + 6;
 
@@ -841,21 +858,15 @@ Result think_2p(
                             return a_enough < b_enough;
                         }
 
-                        // if (a_enough > 0 && b_enough > 0) {
-                        //     return a.second.frame_real > b.second.frame_real;
-                        // }
-
-                        // if (a.second.score != b.second.score) {
-                        //     return a.second.score < b.second.score;
-                        // }
-
-                        // return a.second.frame_real > b.second.frame_real;
-
-                        if (a.second.frame_real != b.second.frame_real) {
-                            return a.second.frame_real > b.second.frame_real;
+                        if (a.second.frame + a.second.count * 2 != b.second.frame + b.second.count * 2) {
+                            return a.second.frame + a.second.count * 2 > b.second.frame + b.second.count * 2;
                         }
 
-                        return a.second.score < b.second.score;
+                        if (a.second.link != b.second.link) {
+                            return a.second.link < b.second.link;
+                        }
+
+                        return a.second.frame_real > b.second.frame_real;
                     }
                 );
 
@@ -906,22 +917,29 @@ Result think_2p(
     auto build_type = Build::Type::BUILD;
 
     if (!form) {
-        build_type = Build::Type::SECOND_BIG;
+        build_type = Build::Type::FREESTYLE;
     }
 
     if (enemy_garbage_obstruct) {
-        build_type = Build::Type::SECOND_SMALL;
+        build_type = Build::Type::FAST;
+        form = false;
     }
 
     // Build fast if our resource is low
-    if (Gaze::is_small_field(self.field, enemy.field) ||
-        (enemy_early_attack >= 18 && field_count < 30)) {
+    // if (Gaze::is_small_field(self.field, enemy.field) ||
+    //     (enemy_early_attack >= 18 && field_count < 30)) {
+    //     build_type = Build::Type::AC;
+    //     form = false;
+    // }
+    if (Gaze::is_small_field(self.field, enemy.field)) {
         build_type = Build::Type::AC;
+        form = false;
     }
 
     // Build all clear
     if (enemy.all_clear) {
         build_type = Build::Type::AC;
+        form = false;
     }
 
     // Build

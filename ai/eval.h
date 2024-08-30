@@ -35,14 +35,17 @@ struct Weight
     i32 well = 0;
     i32 bump = 0;
     i32 form = 0;
-    i32 link = 0;
-    i32 link_h = 0;
+    i32 link_2 = 0;
+    i32 link_3 = 0;
+    i32 link_r = 0;
     i32 waste_14 = 0;
     i32 side = 0;
     i32 nuisance = 0;
 
     i32 tear = 0;
     i32 waste = 0;
+
+    i32 drop_max = 0;
 };
 
 constexpr Weight DEFAULT = {
@@ -74,7 +77,15 @@ i32 get_bump(u8 heights[6]);
 
 i32 get_link(Field& field);
 
+void get_link(Field& field, i32& link_h, i32& link_v);
+
+void get_link_23(Field& field, i32& link_2, i32& link_3);
+
+i32 get_link_no(Field& field);
+
 i32 get_link_horizontal(Field& field);
+
+i32 get_link_vertical_3(Field& field);
 
 i32 get_waste_14(u8 row14);
 
@@ -90,13 +101,15 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Weight,
     well,
     bump,
     form,
-    link,
-    link_h,
+    link_2,
+    link_3,
+    link_r,
     waste_14,
     side,
     nuisance,
     tear,
-    waste
+    waste,
+    drop_max
 )
 
 };

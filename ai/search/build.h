@@ -10,8 +10,8 @@ enum Type
 {
     BUILD,
     HARASS,
-    SECOND_BIG,
-    SECOND_SMALL,
+    FREESTYLE,
+    FAST,
     AC,
     COUNT
 };

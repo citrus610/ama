@@ -49,4 +49,38 @@ constexpr i8 get_offset_y(Type direction)
     return 0;
 };
 
+constexpr Type get_rotate_cw(Type direction)
+{
+    switch (direction)
+    {
+    case Type::UP:
+        return Type::RIGHT;
+    case Type::RIGHT:
+        return Type::DOWN;
+    case Type::DOWN:
+        return Type::LEFT;
+    case Type::LEFT:
+        return Type::UP;
+    }
+
+    return direction;
+};
+
+constexpr Type get_rotate_ccw(Type direction)
+{
+    switch (direction)
+    {
+    case Type::UP:
+        return Type::LEFT;
+    case Type::RIGHT:
+        return Type::UP;
+    case Type::DOWN:
+        return Type::RIGHT;
+    case Type::LEFT:
+        return Type::DOWN;
+    }
+
+    return direction;
+};
+
 };

@@ -22,6 +22,7 @@
 #include <optional>
 #include <x86intrin.h>
 #include <condition_variable>
+#include <numeric>
 #include <stdalign.h>
 #include <functional>
 #include "avec.h"

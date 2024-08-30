@@ -55,8 +55,10 @@ int main()
         tqueue.push_back(queue[(i + 1) % 128]);
         tqueue.push_back(queue[(i + 2) % 128]);
 
-        auto time_start = std::chrono::high_resolution_clock::now();
         auto ai_result = AI::think_1p(field, tqueue, heuristic);
+
+        auto time_start = std::chrono::high_resolution_clock::now();
+        auto ai_atk = Attack::search(field, { tqueue[0], tqueue[1] }, true, 0);
         auto time_stop = std::chrono::high_resolution_clock::now();
         auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(time_stop - time_start).count();
         time += dt;
@@ -81,7 +83,8 @@ int main()
             printf("eval: %d - ets: %d", ai_result.eval, plan_score);
         }
         else {
-            printf("chain: %d", ai_result.eval);
+            // printf("chain: %d", ai_result.eval);
+            printf("chain: %d", ai_atk.candidates.size());
         }
 
         printf(" - %d ms\n", dt);

@@ -6,18 +6,26 @@ namespace Form
 i32 evaluate(Field& field, u8 height[6], const Data& pattern)
 {
     i32 result = 0;
-    const i32 error = -10;
+    const i32 error = -100;
 
     for (i8 x0 = 0; x0 < 6; ++x0) {
         for (i8 y0 = 0; y0 < HEIGHT; ++y0) {
-            if (pattern.form[y0][x0] == 0 || height[x0] <= y0) {
+            if (height[x0] <= y0) {
                 break;
+            }
+
+            if (pattern.form[y0][x0] == 0) {
+                continue;
             }
 
             for (i8 x1 = x0; x1 < 6; ++x1) {
                 for (i8 y1 = 0; y1 < HEIGHT; ++y1) {
-                    if (pattern.form[y1][x1] == 0 || height[x1] <= y1) {
+                    if (height[x1] <= y1) {
                         break;
+                    }
+
+                    if (pattern.form[y1][x1] == 0) {
+                        continue;
                     }
 
                     if (x0 == x1 && y0 >= y1) {

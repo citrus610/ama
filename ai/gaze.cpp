@@ -3,18 +3,22 @@
 namespace Gaze
 {
 
-Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit, bool dropping_garbage)
+Data gaze(Field& field, Attack::Result& asearch, i32 frame_offset)
 {
     Data result = Data();
 
     i32 field_count = field.get_count();
 
-    const i32 dropping_garbage_delay = 1;
+    auto cmp_return = [&] (const Attack::Data& a, const Attack::Data& b) {
+        return a.score < b.score;
+    };
+
+    const i32 REDUNDANCY_MAX = 5;
 
     auto harass_condition = [&] (Attack::Data& attack) -> bool {
         attack.redundancy = Gaze::get_redundancy(field, attack.result);
 
-        if (attack.redundancy >= 6) {
+        if (attack.redundancy > REDUNDANCY_MAX) {
             return false;
         }
 
@@ -24,95 +28,132 @@ Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit, bool drop
     auto defence_1dub_condition = [&] (Attack::Data& attack) -> bool {
         attack.redundancy = Gaze::get_redundancy(field, attack.result);
 
-        if (attack.redundancy >= 6) {
+        if (attack.redundancy > REDUNDANCY_MAX) {
             return false;
         }
 
-        return attack.count < 4 && attack.frame <= 2 && attack.result.get_count() >= std::max(24, field_count / 2);
+        return attack.count <= 3 && attack.frame <= 2 && attack.result.get_count() >= std::max(24, field_count / 2);
     };
 
     auto defence_2dub_condition = [&] (Attack::Data& attack) -> bool {
         attack.redundancy = Gaze::get_redundancy(field, attack.result);
 
-        if (attack.redundancy >= 6) {
+        if (attack.redundancy > REDUNDANCY_MAX) {
             return false;
         }
 
         return attack.count <= 5 && attack.frame <= 4 && attack.result.get_count() >= std::max(24, field_count / 2);
     };
 
+    auto defence_3dub_condition = [&] (Attack::Data& attack) -> bool {
+        attack.redundancy = Gaze::get_redundancy(field, attack.result);
+
+        if (attack.redundancy > REDUNDANCY_MAX) {
+            return false;
+        }
+
+        return attack.count <= 7 && attack.frame <= 6 && attack.result.get_count() >= std::max(24, field_count / 2);
+    };
+
     for (auto& c : asearch.candidates) {
         for (auto& attack : c.attacks) {
-            if (dropping_garbage) {
-                attack.frame += dropping_garbage_delay;
-                attack.frame_real += dropping_garbage_delay;
-            }
+            attack.frame += frame_offset;
+            attack.frame_real += frame_offset;
 
             if (harass_condition(attack)) {
                 result.harass.push_back(attack);
-
-                if (attack.frame <= fast_frame_limit) {
-                    result.harass_fast.push_back(attack);
-                }
             }
 
             if (attack.score > result.main_fast.score) {
                 result.main_fast = attack;
             }
 
-            if (defence_1dub_condition(attack) && attack.score > result.defence_1dub.score) {
-                result.defence_1dub = attack;
+            if (defence_1dub_condition(attack)) {
+                if (result.defence_1dub.count == 0) {
+                    result.defence_1dub = attack;
+                }
+
+                result.defence_1dub = std::max(
+                    result.defence_1dub,
+                    attack,
+                    cmp_return
+                );
             }
 
-            if (defence_2dub_condition(attack) && attack.score > result.defence_2dub.score) {
-                result.defence_2dub = attack;
+            if (defence_2dub_condition(attack)) {
+                if (result.defence_2dub.count == 0) {
+                    result.defence_2dub = attack;
+                }
+
+                result.defence_2dub = std::max(
+                    result.defence_2dub,
+                    attack,
+                    cmp_return
+                );
+            }
+
+            if (defence_3dub_condition(attack)) {
+                if (result.defence_3dub.count == 0) {
+                    result.defence_3dub = attack;
+                }
+
+                result.defence_3dub = std::max(
+                    result.defence_3dub,
+                    attack,
+                    cmp_return
+                );
             }
         }
 
         for (auto& attack : c.attacks_detect) {
-            if (dropping_garbage) {
-                attack.frame += dropping_garbage_delay;
-                attack.frame_real += dropping_garbage_delay;
-            }
+            attack.frame += frame_offset;
+            attack.frame_real += frame_offset;
 
             if (harass_condition(attack)) {
                 result.harass.push_back(attack);
-
-                if (attack.frame <= fast_frame_limit) {
-                    result.harass_fast.push_back(attack);
-                }
             }
 
-            if (defence_2dub_condition(attack) && attack.score > result.defence_2dub.score) {
-                result.defence_2dub = attack;
+            if (attack.score > result.main_fast.score) {
+                result.main_fast = attack;
+            }
+
+            if (defence_1dub_condition(attack)) {
+                if (result.defence_1dub.count == 0) {
+                    result.defence_1dub = attack;
+                }
+
+                result.defence_1dub = std::max(
+                    result.defence_1dub,
+                    attack,
+                    cmp_return
+                );
+            }
+
+            if (defence_2dub_condition(attack)) {
+                if (result.defence_2dub.count == 0) {
+                    result.defence_2dub = attack;
+                }
+
+                result.defence_2dub = std::max(
+                    result.defence_2dub,
+                    attack,
+                    cmp_return
+                );
+            }
+
+            if (defence_3dub_condition(attack)) {
+                if (result.defence_3dub.count == 0) {
+                    result.defence_3dub = attack;
+                }
+
+                result.defence_3dub = std::max(
+                    result.defence_3dub,
+                    attack,
+                    cmp_return
+                );
             }
         }
     }
-
-    Quiet::search(field, 2, 2, [&] (Quiet::Result q) {
-        auto attack = Attack::Data {
-            .count = q.chain,
-            .score = q.score,
-            .score_total = q.score,
-            .frame = 3 + std::max(0, i32(q.plan.get_count()) - field_count),
-            .frame_real = 4 + std::max(0, i32(q.plan.get_count()) - field_count),
-            .all_clear = false,
-            .result = Field()
-        };
-
-        if (dropping_garbage) {
-            attack.frame += dropping_garbage_delay;
-            attack.frame_real += dropping_garbage_delay;
-        }
-
-        if (harass_condition(attack)) {
-            result.harass.push_back(attack);
-
-            if (attack.frame <= fast_frame_limit) {
-                result.harass_fast.push_back(attack);
-            }
-        }
-    });
 
     Quiet::Result q_best = Quiet::Result();
 
@@ -132,12 +173,8 @@ Data gaze(Field& field, Attack::Result& asearch, i32 fast_frame_limit, bool drop
         .result = Field()
     };
 
-    if (dropping_garbage) {
-        result.main.frame += dropping_garbage_delay;
-        result.main.frame_real += dropping_garbage_delay;
-    }
-
-    result.main_q = q_best;
+    result.main.frame += frame_offset;
+    result.main.frame_real += frame_offset;
 
     return result;
 };
@@ -160,15 +197,19 @@ i32 get_accept_limit(Field& field)
     i32 field_count = field.get_count();
     i32 field_count_left = field.get_height(0) + field.get_height(1) + field.get_height(2);
 
-    if (field_count > 48) {
+    if (field.get_height(2) > 9) {
+        return 0;
+    }
+
+    if (field_count >= 48) {
         result = 0;
     }
-    else if (field_count > 36) {
-        result = 4;
+    else if (field_count >= 36) {
+        result = 6;
     }
-    else if (field_count > 30) {
+    else if (field_count >= 30) {
         if (field.get_height(2) <= 4) {
-            result = 12;
+            result = 9;
         }
         else {
             result = 6;
@@ -177,9 +218,6 @@ i32 get_accept_limit(Field& field)
     else {
         if (field.get_height(2) <= 1) {
             result = 30;
-        }
-        else if (field.get_height(2) <= 4) {
-            result = 24;
         }
         else {
             result = 18;
