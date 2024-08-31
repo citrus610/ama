@@ -101,10 +101,6 @@ Result evaluate(Field& field, i32 tear, i32 waste, Weight& w)
         else {
             for (i32 i = 0; i < _countof(list); ++i) {
                 form = std::max(form, Form::evaluate(field, heights, list[i]));
-
-                if (form > 0) {
-                    break;
-                }
             }
         }
 
