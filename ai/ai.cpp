@@ -773,17 +773,17 @@ Result think_2p(
                         return;
                     }
 
-                    if (attack.count == 1 && (attack_send - 6 >= enemy_gaze.defence_1dub.score / target_point)) {
+                    if (attack.count == 1 && (attack_send - 6 >= (enemy_gaze.defence_1dub.score + enemy.bonus_point) / target_point)) {
                         attacks_harass.push_back({ placement, attack });
                         return;
                     }
 
-                    if (attack.count == 2 && (attack_send - 12 >= enemy_gaze.defence_2dub.score / target_point)) {
+                    if (attack.count == 2 && (attack_send - 12 >= (enemy_gaze.defence_2dub.score + enemy.bonus_point) / target_point)) {
                         attacks_harass.push_back({ placement, attack });
                         return;
                     }
 
-                    if (attack.count == 3 && (attack_send - 12 >= enemy_gaze.defence_3dub.score / target_point)) {
+                    if (attack.count == 3 && (attack_send - 12 >= (enemy_gaze.defence_3dub.score + enemy.bonus_point) / target_point)) {
                         attacks_harass.push_back({ placement, attack });
                         return;
                     }

@@ -155,6 +155,61 @@ Data gaze(Field& field, Attack::Result& asearch, i32 frame_offset)
         }
     }
 
+    Quiet::search(field, 2, 2, [&] (Quiet::Result q) {
+        auto attack = Attack::Data {
+            .count = q.chain,
+            .score = q.score,
+            .score_total = q.score,
+            .frame = 3 + std::max(0, i32(q.plan.get_count()) - field_count),
+            .frame_real = 4 + std::max(0, i32(q.plan.get_count()) - field_count),
+            .all_clear = false,
+            .result = Field()
+        };
+
+        attack.frame += frame_offset;
+        attack.frame_real += frame_offset;
+
+        if (harass_condition(attack)) {
+            result.harass.push_back(attack);
+        }
+
+        if (defence_1dub_condition(attack)) {
+            if (result.defence_1dub.count == 0) {
+                result.defence_1dub = attack;
+            }
+
+            result.defence_1dub = std::max(
+                result.defence_1dub,
+                attack,
+                cmp_return
+            );
+        }
+
+        if (defence_2dub_condition(attack)) {
+            if (result.defence_2dub.count == 0) {
+                result.defence_2dub = attack;
+            }
+
+            result.defence_2dub = std::max(
+                result.defence_2dub,
+                attack,
+                cmp_return
+            );
+        }
+
+        if (defence_3dub_condition(attack)) {
+            if (result.defence_3dub.count == 0) {
+                result.defence_3dub = attack;
+            }
+
+            result.defence_3dub = std::max(
+                result.defence_3dub,
+                attack,
+                cmp_return
+            );
+        }
+    });
+
     Quiet::Result q_best = Quiet::Result();
 
     Quiet::search(field, 8, 3, [&] (Quiet::Result q) {
