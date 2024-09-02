@@ -11,7 +11,7 @@ Result search(
     i32 thread_count
 )
 {
-    if (queue.size() <= 2) {
+    if (queue.size() < 2) {
         return Result();
     }
 
@@ -106,7 +106,7 @@ Result search(
 
                 {
                     std::lock_guard<std::mutex> lk(mtx);
-                    result.candidates.push_back(std::move(candidate));
+                    result.candidates.push_back(candidate);
                 }
             }
         });

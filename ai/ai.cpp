@@ -165,10 +165,8 @@ Result think_2p(
         }
     }
 
-    if (enemy.dropping > 0) {
-        if (balance >= 3) {
-            enemy.field.drop_garbage(balance);
-        }
+    if (enemy.dropping >= 3) {
+        enemy.field.drop_garbage(balance);
     }
 
     // Get attacks
@@ -298,7 +296,7 @@ Result think_2p(
                     enemy_attack >= 90 ||
                     enemy_small_field ||
                     enemy_garbage_obstruct) {
-                    printf("bf\n");
+                    // printf("bf\n");
 
                     return Result {
                         .placement = best.first,
@@ -398,7 +396,7 @@ Result think_2p(
                 }
             );
 
-            printf("cross\n");
+            // printf("cross\n");
 
             return Result {
                 .placement = best_syncro.first,
@@ -492,7 +490,7 @@ Result think_2p(
                 }
             );
 
-            printf("s\n");
+            // printf("s\n");
 
             return Result {
                 .placement = best_small.first,
@@ -519,7 +517,7 @@ Result think_2p(
                 }
             );
 
-            printf("b\n");
+            // printf("b\n");
 
             return Result {
                 .placement = best_main.first,
@@ -542,7 +540,7 @@ Result think_2p(
                 }
             );
 
-            printf("des\n");
+            // printf("des\n");
 
             return Result {
                 .placement = best_desperate.first,
@@ -754,7 +752,7 @@ Result think_2p(
                 }
 
                 // Remove weak & long attacks
-                if (attack_send < 6 || attack.count >= 3) {
+                if (attack_send < 6 || attack.count > 3) {
                     return;
                 }
 
@@ -773,17 +771,17 @@ Result think_2p(
                         return;
                     }
 
-                    if (attack.count == 1 && (attack_send - 6 >= (enemy_gaze.defence_1dub.score + enemy.bonus_point) / target_point)) {
+                    if (attack.count == 1 && (attack_send >= (enemy_gaze.defence_1dub.score + enemy.bonus_point) / target_point)) {
                         attacks_harass.push_back({ placement, attack });
                         return;
                     }
 
-                    if (attack.count == 2 && (attack_send - 12 >= (enemy_gaze.defence_2dub.score + enemy.bonus_point) / target_point)) {
+                    if (attack.count == 2 && (attack_send >= (enemy_gaze.defence_2dub.score + enemy.bonus_point) / target_point)) {
                         attacks_harass.push_back({ placement, attack });
                         return;
                     }
 
-                    if (attack.count == 3 && (attack_send - 12 >= (enemy_gaze.defence_3dub.score + enemy.bonus_point) / target_point)) {
+                    if (attack.count == 3 && (attack_send >= (enemy_gaze.defence_3dub.score + enemy.bonus_point) / target_point)) {
                         attacks_harass.push_back({ placement, attack });
                         return;
                     }

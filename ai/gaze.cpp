@@ -69,10 +69,6 @@ Data gaze(Field& field, Attack::Result& asearch, i32 frame_offset)
             }
 
             if (defence_1dub_condition(attack)) {
-                if (result.defence_1dub.count == 0) {
-                    result.defence_1dub = attack;
-                }
-
                 result.defence_1dub = std::max(
                     result.defence_1dub,
                     attack,
@@ -81,10 +77,6 @@ Data gaze(Field& field, Attack::Result& asearch, i32 frame_offset)
             }
 
             if (defence_2dub_condition(attack)) {
-                if (result.defence_2dub.count == 0) {
-                    result.defence_2dub = attack;
-                }
-
                 result.defence_2dub = std::max(
                     result.defence_2dub,
                     attack,
@@ -93,10 +85,6 @@ Data gaze(Field& field, Attack::Result& asearch, i32 frame_offset)
             }
 
             if (defence_3dub_condition(attack)) {
-                if (result.defence_3dub.count == 0) {
-                    result.defence_3dub = attack;
-                }
-
                 result.defence_3dub = std::max(
                     result.defence_3dub,
                     attack,
@@ -118,10 +106,6 @@ Data gaze(Field& field, Attack::Result& asearch, i32 frame_offset)
             }
 
             if (defence_1dub_condition(attack)) {
-                if (result.defence_1dub.count == 0) {
-                    result.defence_1dub = attack;
-                }
-
                 result.defence_1dub = std::max(
                     result.defence_1dub,
                     attack,
@@ -130,10 +114,6 @@ Data gaze(Field& field, Attack::Result& asearch, i32 frame_offset)
             }
 
             if (defence_2dub_condition(attack)) {
-                if (result.defence_2dub.count == 0) {
-                    result.defence_2dub = attack;
-                }
-
                 result.defence_2dub = std::max(
                     result.defence_2dub,
                     attack,
@@ -142,10 +122,6 @@ Data gaze(Field& field, Attack::Result& asearch, i32 frame_offset)
             }
 
             if (defence_3dub_condition(attack)) {
-                if (result.defence_3dub.count == 0) {
-                    result.defence_3dub = attack;
-                }
-
                 result.defence_3dub = std::max(
                     result.defence_3dub,
                     attack,
@@ -161,7 +137,7 @@ Data gaze(Field& field, Attack::Result& asearch, i32 frame_offset)
             .score = q.score,
             .score_total = q.score,
             .frame = 3 + std::max(0, i32(q.plan.get_count()) - field_count),
-            .frame_real = 4 + std::max(0, i32(q.plan.get_count()) - field_count),
+            .frame_real = 3 + std::max(0, i32(q.plan.get_count()) - field_count),
             .all_clear = false,
             .result = Field()
         };
@@ -174,10 +150,6 @@ Data gaze(Field& field, Attack::Result& asearch, i32 frame_offset)
         }
 
         if (defence_1dub_condition(attack)) {
-            if (result.defence_1dub.count == 0) {
-                result.defence_1dub = attack;
-            }
-
             result.defence_1dub = std::max(
                 result.defence_1dub,
                 attack,
@@ -186,10 +158,6 @@ Data gaze(Field& field, Attack::Result& asearch, i32 frame_offset)
         }
 
         if (defence_2dub_condition(attack)) {
-            if (result.defence_2dub.count == 0) {
-                result.defence_2dub = attack;
-            }
-
             result.defence_2dub = std::max(
                 result.defence_2dub,
                 attack,
@@ -198,10 +166,6 @@ Data gaze(Field& field, Attack::Result& asearch, i32 frame_offset)
         }
 
         if (defence_3dub_condition(attack)) {
-            if (result.defence_3dub.count == 0) {
-                result.defence_3dub = attack;
-            }
-
             result.defence_3dub = std::max(
                 result.defence_3dub,
                 attack,
