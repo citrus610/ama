@@ -10,34 +10,34 @@
 A strong Puyo Puyo AI.
 
 ## Overview
-Ama is an AI created to play Puyo Puyo Tsu 1P and PVP. This project aims to reach the playing strength of professional Puyo Puyo players. Currently, Ama can run on Puyo Puyo Champions Steam version.
-<p align="center">
-    <a href="https://www.youtube.com/watch?v=LQiWRFNRknk">
-        <img src="https://img.youtube.com/vi/LQiWRFNRknk/0.jpg">
-        <br />
-        YouTube - ama AI vs のらすけ [ぷよぷよAI]
-    </a>
-</p>
-
-## Features
-- Efficient bitfield implementation inspired by [puyoai](https://github.com/puyoai/puyoai)
-- Uses human-like forms as the default chain forms, such as GTR, Meri, etc. To disable human-like chains, set the `form` parameter in `config.json` to 0.
-- Implements the ability to gaze the opponent's field:
-  - Can harass the opponent at the right time.
-  - Can return the attacks from the opponent.
-- Implements high recovery mode that can build chain very fast.
-- Decent chain building ablility.
+This is ama's new beam search implementation with comments.
+I just want to publish this to share the results of my research over the past year.
+Hopefully, this will be a useful learning resource for future Puyo AI developers.
+これはamaの新しいビームサーチの実装とコメントである。
+将来のぷよAI開発者にとって有益な学習リソースになることを願っています。
 
 ## How to build
-For now, this projects can only be compiled using `g++` that supports `c++ 20`. Make sure that your cpu support `sse4` and `pext`.
+Currently, this projects can only be compiled using `g++` that supports `c++ 20`. Make sure that your cpu support `sse4` and `pext`.
 - Clone and `cd` to the repository.
 - Run `make PEXT=true puyop` to build the puyop client.
 - Get the binary in `bin`.
+- Run the `puyop` client to see ama build chains on [puyop](https://www.puyop.com).
+
+## Files
+- [README](README.md) the file you are currently reading.
+- [ai](ai) the main AI implementation directory.
+- [core](core) puyo puyo core game implementation, including fast `bitfield` implementation using `simd` etc.
+- [lib](lib) external 3rd library used.
+- [puyop](puyop) implementation of `puyop` client, check this if you want to see how to use ama's beam search in your project.
+- [test](test) ama's chains tester.
+- [tuner](tuner) ama's rough tuner implementation that is really good at improving bad weights fast but very bad at fine-tuning good weights.
+- [config.json](config.json) ama's search weights.
 
 ## Acknowledgement
-- Thanks K. Ikeda, D. Tomizawa, S. Viennot and Y. Tanaka for their paper "Playing PuyoPuyo: Two search algorithms for constructing chain and tactical heuristics." Ama's search algorithm was heavily influenced by their work.
+- Thanks takapt for their [implementation of beam search](https://www.slideshare.net/slideshow/ai-52214222/52214222), the new ama's search was heavily inspired by this.
 - Thanks [puyoai](https://github.com/puyoai/puyoai) for the fast implementation of bitfield and the inspiration for the evaluation function.
 - Thanks [nlohmann](https://github.com/nlohmann/json) for the c++ json library.
+- Thanks [nicoshev](https://github.com/Nicoshev/rapidhash) for their `rapidhash` hash function.
 
 ## License
 This project is licensed under [MIT LICENSE](LICENSE).
