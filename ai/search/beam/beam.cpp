@@ -161,7 +161,44 @@ Result search(
 //
 // 2. Selection policy
 // In takapt's original algorithm, for each queue they only return the biggest chain found
-// We improve upon this by returning all the candidates with their respective biggest chains found in each queue
+// We improve upon this by returning all the candidates with their respective biggest chains found in each queue:
+//
+// Ex:
+// - Thread #1 result:
+//    +---------------+---------------+---------------+     +---------------+
+//    |  placement 1  |  placement 2  |  placement 3  | ... |  placement n  |
+//    +---------------+---------------+---------------+     +---------------+
+//    |   max chain   |   max chain   |   max chain   |     |   max chain   |
+//    |     80000     |     1000      |    100000     |     |      500      |
+//    +---------------+---------------+---------------+     +---------------+
+// - Thread #2 result:
+//    +---------------+---------------+---------------+     +---------------+
+//    |  placement 1  |  placement 2  |  placement 3  | ... |  placement n  |
+//    +---------------+---------------+---------------+     +---------------+
+//    |   max chain   |   max chain   |   max chain   |     |   max chain   |
+//    |     95000     |     70000     |     70000     |     |     5000      |
+//    +---------------+---------------+---------------+     +---------------+
+// - Thread #3 result:
+//    +---------------+---------------+---------------+     +---------------+
+//    |  placement 1  |  placement 2  |  placement 3  | ... |  placement n  |
+//    +---------------+---------------+---------------+     +---------------+
+//    |   max chain   |   max chain   |   max chain   |     |   max chain   |
+//    |     90000     |     20000     |     90000     |     |     10000     |
+//    +---------------+---------------+---------------+     +---------------+
+//
+// - Accumulated result:
+//    +---------------+---------------+---------------+     +---------------+
+//    |  placement 1  |  placement 2  |  placement 3  | ... |  placement n  |
+//    +---------------+---------------+---------------+     +---------------+
+//    |  total chain  |  total chain  |  total chain  |     |  total chain  |
+//    |    265000     |     91000     |    260000     |     |     15500     |
+//    +---------------+---------------+---------------+     +---------------+
+//          ^^^^^
+//     The best result
+// 
+// For each placement, we accumulate it's max chains found from every threads and choose the placement with the highest total chain score.
+// This is the same as choosing the placement with the highest expected chain score.
+// We can get the expected chain score by dividing the total chain by the thread count.
 //
 // 3. Search constants
 // Instead of searching until we fill the field, we only search to depth 16 with the beam width of 250.
@@ -197,6 +234,10 @@ Result search_multi(
             // Beam search for 1 queue
             auto b = beam::search(field, queues[id], w, configs);
 
+            if (b.candidates.empty()) {
+                return;
+            }
+
             std::lock_guard<std::mutex> lk(mtx);
 
             // If this is the first finished search
@@ -222,13 +263,15 @@ Result search_multi(
     }
 
     // Sorts candidates by their total accumulated scores
-    std::sort(
-        result.candidates.begin(),
-        result.candidates.end(),
-        [] (const beam::Candidate& a, const beam::Candidate& b) {
-            return a.score > b.score;
-        }
-    );
+    if (!result.candidates.empty()) {
+        std::sort(
+            result.candidates.begin(),
+            result.candidates.end(),
+            [] (const beam::Candidate& a, const beam::Candidate& b) {
+                return a.score > b.score;
+            }
+        );
+    }
 
     return result;
 };
