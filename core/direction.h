@@ -2,9 +2,10 @@
 
 #include "def.h"
 
-namespace Direction
+namespace direction
 {
 
+// Puyo pair's direction
 enum class Type : u8
 {
     UP,

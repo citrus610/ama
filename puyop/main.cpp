@@ -1,7 +1,7 @@
 #include <iostream>
 #include "encode.h"
 
-void load_json_heuristic(Eval::Weight& h)
+void load_json(beam::eval::Weight& h)
 {
     std::ifstream file;
     file.open("config.json");
@@ -11,7 +11,7 @@ void load_json_heuristic(Eval::Weight& h)
     from_json(js, h);
 };
 
-void save_json_heuristic()
+void save_json()
 {
     std::ifstream f("config.json");
     if (f.good()) {
@@ -21,26 +21,35 @@ void save_json_heuristic()
 
     std::ofstream o("config.json");
     json js;
-    to_json(js, Eval::DEFAULT);
+    to_json(js, beam::eval::Weight());
     o << std::setw(4) << js << std::endl;
     o.close();
 };
 
-int main()
+int main(int argc, char** argv)
 {
     using namespace std;
 
     srand(uint32_t(time(NULL)));
 
-    Eval::Weight heuristic;
-    save_json_heuristic();
-    load_json_heuristic(heuristic);
+    beam::eval::Weight w;
+    save_json();
+    load_json(w);
 
-    auto queue = Cell::create_queue(rand() & 0xFFFF);
+    u32 seed = rand() & 0xFFFF;
+    seed = rand() & 0xFFFF;
+
+    if (argc == 2) {
+        seed = std::atoi(argv[1]);
+    }
+
+    printf("seed: %d\n", seed);
+
+    auto queue = cell::create_queue(seed);
 
     Field field;
 
-    vector<Move::Placement> placements;
+    vector<move::Placement> placements;
 
     i32 time = 0;
     i32 score = 0;
@@ -50,43 +59,31 @@ int main()
             break;
         }
 
-        vector<Cell::Pair> tqueue;
+        vector<cell::Pair> tqueue;
         tqueue.push_back(queue[(i + 0) % 128]);
         tqueue.push_back(queue[(i + 1) % 128]);
-        tqueue.push_back(queue[(i + 2) % 128]);
-
-        auto ai_result = AI::think_1p(field, tqueue, heuristic);
 
         auto time_start = std::chrono::high_resolution_clock::now();
-        auto ai_atk = Attack::search(field, { tqueue[0], tqueue[1] }, true, 0);
+        auto ai_result = beam::search_multi(field, tqueue, w);
         auto time_stop = std::chrono::high_resolution_clock::now();
         auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(time_stop - time_start).count();
         time += dt;
 
-        Cell::Pair pair = { tqueue[0].first, tqueue[0].second };
+        if (ai_result.candidates.empty()) {
+            break;
+        }
 
-        field.drop_pair(ai_result.placement.x, ai_result.placement.r, pair);
+        auto mv = ai_result.candidates[0];
+
+        field.drop_pair(mv.placement.x, mv.placement.r, tqueue[0]);
         auto mask = field.pop();
-        auto chain = Chain::get_score(mask);
+        auto chain = chain::get_score(mask);
 
-        placements.push_back(ai_result.placement);
+        placements.push_back(mv.placement);
 
-        i32 plan_score = 0;
-        auto plan = ai_result.plan;
-        if (plan.has_value()) {
-            auto pop_mask = plan.value().pop();
+        i32 plan_score = mv.score;
 
-            plan_score = Chain::get_score(pop_mask).score;
-        }
-
-        if (ai_result.plan.has_value()) {
-            printf("eval: %d - ets: %d", ai_result.eval, plan_score);
-        }
-        else {
-            // printf("chain: %d", ai_result.eval);
-            printf("chain: %d", ai_atk.candidates.size());
-        }
-
+        printf("ets: %d", plan_score / beam::BRANCH);
         printf(" - %d ms\n", dt);
 
         if (chain.score >= 78000) {
@@ -95,7 +92,7 @@ int main()
         }
     }
 
-    cout << Encode::get_encoded_URL(Field(), queue, placements) << "\n";
+    cout << encode::get_encoded_URL(Field(), queue, placements) << "\n";
     cout << "time: " << std::to_string(double(time) / double(placements.size())) << " ms\n";
     cout << "score: " << score << "\n";
 

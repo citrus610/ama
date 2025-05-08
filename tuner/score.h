@@ -2,53 +2,66 @@
 
 #include "../ai/ai.h"
 
-static std::pair<i32, i32> simulate(Eval::Weight w, std::vector<Cell::Pair> queue)
+namespace tuner
 {
-    Field field = Field();
 
-    i32 score = 0;
+struct Score
+{
+    chain::Score chain = { 0, 0 };
     i32 frame = 0;
+};
 
-    i32 i_offset = 0;
+inline Score get_score(beam::eval::Weight w, u32 seed)
+{
+    auto score = Score();
 
-    for (int i = 0; i < 54; ++i)
-    {
-        // if (field.is_empty()) {
-        //     score = 0;
-        //     frame = 0;
+    auto field = Field();
+    auto queue = cell::create_queue(seed);
 
-        //     i_offset += i;
-        //     i = 0;
-        // }
+    for (i32 i = 0; i < 64; ++i) {
+        cell::Queue q = {
+            queue[(i + 0) % 128],
+            queue[(i + 1) % 128]
+        };
 
-        std::vector<Cell::Pair> tqueue;
-        tqueue.push_back(queue[(i + i_offset + 0) % queue.size()]);
-        tqueue.push_back(queue[(i + i_offset + 1) % queue.size()]);
-        tqueue.push_back(queue[(i + i_offset + 2) % queue.size()]);
+        auto ai = beam::search_multi(field, q, w);
 
-        auto airesult = AI::think_1p(field, tqueue, w, false);
+        if (ai.candidates.empty()) {
+            score = Score {
+                .chain = 0,
+                .frame = 1
+            };
+            
+            break;
+        }
 
-        frame += field.get_drop_pair_frame(airesult.placement.x, airesult.placement.r);
+        auto mv = ai.candidates.front();
 
-        field.drop_pair(airesult.placement.x, airesult.placement.r, tqueue[0]);
+        score.frame += field.get_drop_pair_frame(mv.placement.x, mv.placement.r);
+
+        field.drop_pair(mv.placement.x, mv.placement.r, q[0]);
 
         auto mask = field.pop();
-        auto chain = Chain::get_score(mask);
+        auto chain = chain::get_score(mask);
 
         if (field.get_height(2) > 11) {
-            return { 0, 0 };
+            break;
         }
 
-        if (chain.score > 0) {
-            score = std::max(score, chain.score);
-
-            if (chain.score >= AI::TRIGGER_DEFAULT) {
-                break;
-            }
+        if (chain.score > score.chain.score) {
+            score.chain = chain;
         }
 
-        frame += chain.count * 2;
+        if (chain.score >= 80000) {
+            break;
+        }
+        
+        score.frame += chain.count * 2;
     }
 
-    return { score, frame };
+    score.chain.score = i32(score.chain.score / 1000) * 1000;
+
+    return score;
+};
+
 };

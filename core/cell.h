@@ -2,9 +2,10 @@
 
 #include "def.h"
 
-namespace Cell
+namespace cell
 {
 
+// Puyo cell type
 enum class Type : u8
 {
     RED,
@@ -15,8 +16,10 @@ enum class Type : u8
     NONE
 };
 
+// Puyo pair
 typedef std::pair<Type, Type> Pair;
 
+// Puyo queue
 typedef std::vector<Pair> Queue;
 
 constexpr u8 COUNT = 5;
@@ -61,26 +64,37 @@ constexpr Type from_char(char c)
     return Type::NONE;
 };
 
-static Queue create_queue(u32 seed)
+// Create puyo queue based on Puyo eSport's algorithm
+inline Queue create_queue(u32 seed)
 {
+    // Puyo eSport's random number generation algorithm
     auto rng = [&] () -> u32 {
         seed = (seed * u32(0x5D588B65) + u32(0x269EC3)) & u32(0xFFFFFFFF);
         return seed;
     };
 
+    // Calls rng() 5 times
+    // In Puyo eSport, rng() is called 5 times to choose the colors in the queue
     for (i32 i = 0; i < 5; ++i) {
         rng();
     }
 
+    // Puyo eSport creates 3 queues everytime when initializing:
+    // - a 3-color queue
+    // - a 4-color queue
+    // - a 5-color queue
     u8 queue[3][256] = { 0 };
 
+    // Initializes all 3 queues
     for (i32 mode = 0; mode < 3; ++mode) {
         for (i32 i = 0; i < 256; ++i) {
             queue[mode][i] = i % (mode + 3);
         }
     }
 
+    // Shuffles all 3 queues
     for (i32 mode = 0; mode < 3; ++mode) {
+        // 1st shuffle
         for (i32 col = 0; col < 15; ++col) {
             for (i32 i = 0; i < 8; ++i) {
                 i32 n1 = (rng() >> 28) + col * 16;
@@ -90,6 +104,7 @@ static Queue create_queue(u32 seed)
             }
         }
 
+        // 2nd shuffle
         for (i32 col = 0; col < 7; ++col) {
             for (i32 i = 0; i < 16; ++i) {
                 i32 n1 = (rng() >> 27) + col * 32;
@@ -99,6 +114,7 @@ static Queue create_queue(u32 seed)
             }
         }
 
+        // 3rd shuffle
         for (i32 col = 0; col < 3; ++col) {
             for (i32 i = 0; i < 32; ++i) {
                 i32 n1 = (rng() >> 26) + col * 64;
@@ -109,15 +125,17 @@ static Queue create_queue(u32 seed)
         }
     }
 
+    // Replace the first 2 pairs of the 4-color and 5-color queues with the first 2 pairs of the 3-color queue
+    // This ensures you'll only get 3 different colors in your first 2 pairs
     for (i32 i = 0; i < 4; ++i) {
         queue[1][i] = queue[0][i];
         queue[2][i] = queue[0][i];
     }
 
-    std::vector<Cell::Pair> result;
+    std::vector<cell::Pair> result;
 
     for (i32 i = 0; i < 128; ++i) {
-        result.push_back({ Cell::Type(queue[1][i * 2]), Cell::Type(queue[1][i * 2 + 1]) });
+        result.push_back({ cell::Type(queue[1][i * 2]), cell::Type(queue[1][i * 2 + 1]) });
     }
 
     return result;

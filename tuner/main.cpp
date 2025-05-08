@@ -1,66 +1,69 @@
 #include "tuner.h"
-#include "score.h"
 
 int main()
 {
     srand(time(NULL));
 
-    i32 user;
-
     printf("Choose an action:\n");
-    printf("[0] - Train default weights\n");
-    printf("[1] - Train custom weights\n");
-    printf("[2] - Print value\n");
+    printf("[0] - Train\n");
+    printf("[1] - Print\n");
 
+    i32 user;
     std::cin >> user;
 
     if (user == 0) {
-        Tuner::run(Eval::DEFAULT);
-    }
-    else if (user == 1) {
-        auto w = Eval::Weight();
+        auto w = beam::eval::Weight();
+
         std::ifstream f("config.json");
+
         if (!f.good()) {
             printf("Can't find \"config.json\"!\n");
             return -1;
         };
+
         json js;
         f >> js;
         f.close();
+
         from_json(js, w);
 
-        Tuner::run(w);
+        tuner::run(w);
     }
-    else if (user == 2) {
+    else if (user == 1) {
         i32 idx = 0;
 
-        std::string out_str;
-        std::string out_id_str;
+        std::string str_s0;
+        std::string str_s1;
+        std::string str_s2;
+        std::string str_id;
 
         while (true)
         {
-            std::string id = std::to_string(idx);
-            std::string fname = std::string("data/") + id + std::string(".json");
+            std::string file = std::string("data/") + std::to_string(idx) + std::string(".json");
 
-            std::ifstream f(fname);
+            std::ifstream f(file);
+
             if (!f.good()) {
                 break;
             };
 
-            Tuner::SaveData s;
-            Tuner::load(id, s);
+            auto save = tuner::load(idx);
 
-            for (i32 i = 0; i <= s.unchange; ++i) {
-                out_str += std::to_string(s.count) + "\n";
-                out_id_str += id + "\n";
-            }
+            str_s0 += std::to_string(double(save.score[0].chain.score) / double(save.score[0].frame)) + "\n";
+            str_s1 += std::to_string(save.score[0].chain.score) + "\n";
+            str_s2 += std::to_string(save.score[0].frame) + "\n";
+            str_id += std::to_string(idx) + "\n";
 
             idx += 1;
         }
 
         std::ofstream o("out.txt");
-        o << out_str << std::endl;
-        o << out_id_str << std::endl;
+
+        o << str_s0 << "_" << std::endl;
+        o << str_s1 << "_" << std::endl;
+        o << str_s2 << "_" << std::endl;
+        o << str_id << "_" << std::endl;
+
         o.close();
     }
 

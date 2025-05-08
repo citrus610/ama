@@ -1,9 +1,7 @@
-#include <iostream>
-#include <fstream>
-
+#include "../core/core.h"
 #include "../ai/ai.h"
 
-void load_json_heuristic(Eval::Weight& h)
+void load_json(beam::eval::Weight& h)
 {
     std::ifstream file;
     file.open("config.json");
@@ -13,7 +11,7 @@ void load_json_heuristic(Eval::Weight& h)
     from_json(js, h);
 };
 
-void save_json_heuristic()
+void save_json()
 {
     std::ifstream f("config.json");
     if (f.good()) {
@@ -23,101 +21,67 @@ void save_json_heuristic()
 
     std::ofstream o("config.json");
     json js;
-    to_json(js, Eval::DEFAULT);
+    to_json(js, beam::eval::Weight());
     o << std::setw(4) << js << std::endl;
     o.close();
 };
 
-static Chain::Score get_score(std::vector<Cell::Pair> queue, Eval::Weight w)
+inline chain::Score get_score(beam::eval::Weight w, u32 seed)
 {
-    Field field = Field();
+    auto score = chain::Score();
 
-    auto best = Chain::Score { 0, 0 };
+    auto field = Field();
+    auto queue = cell::create_queue(seed);
 
-    for (int i = 0; i < 60; ++i)
-    {
-        std::vector<Cell::Pair> tqueue;
-        tqueue.push_back(queue[(i + 0) % queue.size()]);
-        tqueue.push_back(queue[(i + 1) % queue.size()]);
-        tqueue.push_back(queue[(i + 2) % queue.size()]);
+    for (i32 i = 0; i < 50; ++i) {
+        cell::Queue q = {
+            queue[(i + 0) % 128],
+            queue[(i + 1) % 128]
+        };
 
-        auto airesult = AI::think_1p(field, tqueue, w, false);
+        auto ai = beam::search_multi(field, q, w);
 
-        field.drop_pair(airesult.placement.x, airesult.placement.r, tqueue[0]);
-
-        auto mask = field.pop();
-        auto chain = Chain::get_score(mask);
-
-        if (field.get_height(2) > 11) {
-            return { 0, 0 };
+        if (ai.candidates.empty()) {
+            break;
         }
 
-        if (chain.score > best.score) {
-            best = chain;
+        auto mv = ai.candidates.front();
 
-            if (chain.score >= AI::TRIGGER_DEFAULT) {
-                break;
-            }
+        field.drop_pair(mv.placement.x, mv.placement.r, q[0]);
+
+        auto mask = field.pop();
+        auto chain = chain::get_score(mask);
+
+        if (field.get_height(2) > 11) {
+            break;
+        }
+
+        if (chain.score > score.score) {
+            score = chain;
+        }
+
+        if (chain.score >= 80000) {
+            break;
         }
     }
 
-    return best;
+    return score;
 };
 
 int main()
 {
+    beam::eval::Weight w;
+    save_json();
+    load_json(w);
+
     srand(uint32_t(time(NULL)));
 
-    auto field = Field();
+    const i32 POPULATION_SIZE = 200;
 
-    const char c[13][7] = {
-        "......",
-        "......",
-        "......",
-        "......",
-        "......",
-        ".....R",
-        "......",
-        ".....R",
-        "RR...R",
-        ".....R",
-        "R.....",
-        "RR..BY",
-        "GGGBBY"
-    };
+    u32 seeds[POPULATION_SIZE];
 
-    // field.from(c);
-
-    field.print();
-
-    // Quiet::search(field, 6, 3, [&] (Quiet::Result q) {
-    //     u8 heights[6];
-    //     q.plan.get_heights(heights);
-    //     heights[q.x] = field.get_height(q.x);
-
-    //     i32 need = q.plan.get_height(q.x) - heights[q.x];
-
-    //     i32 key = 6 - q.depth;
-
-    //     i32 key_s = q.plan.get_count() - field.get_count() - need - key;
-
-    //     q.plan.print();
-    //     printf("need: %d\n", need);
-    //     printf("key: %d\n", key);
-    //     printf("key_s: %d\n", key_s);
-
-    //     std::cin.get();
-    // });
-
-    Eval::Weight w;
-    save_json_heuristic();
-    load_json_heuristic(w);
-
-    const i32 POPULATION_SIZE = 1000;
-
-    std::vector<Cell::Pair> queues[POPULATION_SIZE];
     for (i32 i = 0; i < POPULATION_SIZE; ++i) {
-        queues[i] = Cell::create_queue(rand() & 0xFFFF);
+        seeds[i] = rand() & 0xFFFF;
     }
 
     std::atomic<i32> progress = 0;
@@ -126,15 +90,27 @@ int main()
     std::atomic<i32> map_count[20] = { 0 };
     std::atomic<i32> map_score[POPULATION_SIZE] = { 0 };
 
+    struct FailedSeed
+    {
+        u32 seed = ~0;
+        i32 score = 0;
+    };
+
+    std::vector<FailedSeed> failed_seed = {};
+
     for (i32 t = 0; t < 4; ++t) {
         threads.emplace_back([&] (i32 tid) {
             for (i32 i = 0; i < POPULATION_SIZE / 4; ++i) {
-                auto queue = queues[tid * POPULATION_SIZE / 4 + i];
+                auto seed = seeds[tid * POPULATION_SIZE / 4 + i];
 
-                auto score = get_score(queue, w);
+                auto score = get_score(w, seed);
 
                 map_count[score.count] += 1;
                 map_score[tid * POPULATION_SIZE / 4 + i] = score.score;
+
+                if (score.score < 90000) {
+                    failed_seed.push_back(FailedSeed { .seed = seeds[tid * POPULATION_SIZE / 4 + i], .score = score.score });
+                }
 
                 progress += 1;
                 printf("\rprogress: %d", progress.load());
@@ -146,20 +122,34 @@ int main()
         thread.join();
     }
 
-    std::string score_str;
+    std::string out_str;
 
     for (i32 i = 0; i < 20; ++i) {
-        score_str += std::to_string(map_count[i].load()) + "\n";
+        out_str += std::to_string(map_count[i].load()) + "\n";
     }
 
-    score_str += "\n";
+    out_str += "\n";
 
     for (i32 i = 0; i < POPULATION_SIZE; ++i) {
-        score_str += std::to_string(map_score[i].load()) + "\n";
+        out_str += std::to_string(map_score[i].load()) + "\n";
+    }
+
+    out_str += "\n";
+
+    std::sort(
+        failed_seed.begin(),
+        failed_seed.end(),
+        [&] (FailedSeed a, FailedSeed b) {
+            return a.score < b.score;
+        }
+    );
+
+    for (i32 i = 0; i < failed_seed.size(); ++i) {
+        out_str += std::to_string(failed_seed[i].seed) + " " + std::to_string(failed_seed[i].score) + "\n";
     }
 
     std::ofstream o("out.txt");
-    o << score_str << std::endl;
+    o << out_str << std::endl;
     o.close();
 
     return 0;

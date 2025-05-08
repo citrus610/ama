@@ -6,3 +6,5 @@
 #include "cell.h"
 #include "fieldbit.h"
 #include "field.h"
+#include "chain.h"
+#include "move.h"
