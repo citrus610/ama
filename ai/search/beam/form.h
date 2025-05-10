@@ -15,15 +15,16 @@ struct Data
 {
     u8 form[HEIGHT][6] = { 0 };
     i8 matrix[AREA][AREA] = { 0 };
+    u8 groups = 0;
 };
 
 i32 evaluate(Field& field, u8 height[6], const Data& pattern);
 
-i32 accumulate(Field& field, u8 height[6], i8 x_check[2], i8 y_check[2], const Data& pattern);
+i32 evaluate_2(Field& field, u8 height[6], const Data& pattern);
 
 Field get_plan(Field& field, const Data& pattern);
 
-constexpr Data GTR()
+constexpr Data GTR = []
 {
     Data pattern = { 0 };
 
@@ -42,7 +43,7 @@ constexpr Data GTR()
         { 0,  0,  0,  0,  0,  0,  0,  0 },
         { 0,  2, -1, -1,  0,  0,  0,  0 },
         { 0, -1,  1, -1,  0, -1,  0,  0 },
-        { 0, -1, -1,  2, -1, -1,  0,  0 },
+        { 0, -1, -1,  1, -1, -1,  0,  0 },
         { 0,  0,  0, -1,  0,  0,  0,  0 },
         { 0,  0, -1, -1,  0,  0,  0,  0 },
         { 0,  0,  0,  0,  0,  0,  0,  0 },
@@ -52,6 +53,7 @@ constexpr Data GTR()
     for (i8 x = 0; x < 6; ++x) {
         for (i8 y = 0; y < HEIGHT; ++y) {
             pattern.form[y][x] = dform[HEIGHT - 1 - y][x];
+            pattern.groups = std::max(pattern.groups, dform[HEIGHT - 1 - y][x]);
         }
     }
 
@@ -62,9 +64,9 @@ constexpr Data GTR()
     }
 
     return pattern;
-};
+} ();
 
-constexpr Data SGTR()
+constexpr Data SGTR = []
 {
     Data pattern = { 0 };
 
@@ -84,7 +86,7 @@ constexpr Data SGTR()
         { 0,  2, -1, -1, -1,  0,  0,  0 },
         { 0, -1,  1, -1,  0,  0,  0,  0 },
         { 0, -1, -1,  1, -1,  0, -1,  0 },
-        { 0, -1,  0, -1,  2, -1,  0,  0 },
+        { 0, -1,  0, -1,  1, -1,  0,  0 },
         { 0,  0,  0,  0, -1,  0,  0,  0 },
         { 0,  0,  0, -1,  0,  0,  0,  0 },
         { 0,  0,  0,  0,  0,  0,  0,  0 }
@@ -93,6 +95,7 @@ constexpr Data SGTR()
     for (i8 x = 0; x < 6; ++x) {
         for (i8 y = 0; y < HEIGHT; ++y) {
             pattern.form[y][x] = dform[HEIGHT - 1 - y][x];
+            pattern.groups = std::max(pattern.groups, dform[HEIGHT - 1 - y][x]);
         }
     }
 
@@ -103,9 +106,9 @@ constexpr Data SGTR()
     }
 
     return pattern;
-};
+} ();
 
-constexpr Data FRON()
+constexpr Data FRON = []
 {
     Data pattern = { 0 };
 
@@ -125,7 +128,7 @@ constexpr Data FRON()
         { 0,  2, -1, -1, -1,  0,  0,  0 },
         { 0, -1,  1, -1,  0,  0,  0, -1 },
         { 0, -1, -1,  1, -1,  0, -1,  0 },
-        { 0, -1,  0, -1,  2, -1,  0,  0 },
+        { 0, -1,  0, -1,  1, -1,  0,  0 },
         { 0,  0,  0,  0, -1,  0,  0,  0 },
         { 0,  0,  0, -1,  0,  0,  0,  0 },
         { 0,  0, -1,  0,  0,  0,  0,  0 }
@@ -134,6 +137,7 @@ constexpr Data FRON()
     for (i8 x = 0; x < 6; ++x) {
         for (i8 y = 0; y < HEIGHT; ++y) {
             pattern.form[y][x] = dform[HEIGHT - 1 - y][x];
+            pattern.groups = std::max(pattern.groups, dform[HEIGHT - 1 - y][x]);
         }
     }
 
@@ -144,9 +148,9 @@ constexpr Data FRON()
     }
 
     return pattern;
-};
+} ();
 
-constexpr Data MERI()
+constexpr Data MERI = []
 {
     Data pattern = { 0 };
 
@@ -176,6 +180,7 @@ constexpr Data MERI()
     for (i8 x = 0; x < 6; ++x) {
         for (i8 y = 0; y < HEIGHT; ++y) {
             pattern.form[y][x] = dform[HEIGHT - 1 - y][x];
+            pattern.groups = std::max(pattern.groups, dform[HEIGHT - 1 - y][x]);
         }
     }
 
@@ -186,7 +191,15 @@ constexpr Data MERI()
     }
 
     return pattern;
+} ();
+
+constexpr Data list[] = {
+    GTR,
+    SGTR,
+    FRON
 };
+
+constexpr usize COUNT = _countof(list);
 
 };
 

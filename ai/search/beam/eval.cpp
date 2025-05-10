@@ -18,12 +18,6 @@ void evaluate(node::Data& node, const Weight& w)
     if (w.form > 0) {
         i32 form = -100;
 
-        const form::Data list[] = {
-            form::GTR(),
-            form::SGTR(),
-            form::FRON()
-        };
-
         // Stop pattern matching if we have garbage puyo
         auto mask_garbage = node.field.data[static_cast<i32>(cell::Type::GARBAGE)];
         mask_garbage.data &= _mm_set_epi16(0, 0, 0, 0, 0xF, 0xF, 0xF, 0xF);
@@ -33,8 +27,8 @@ void evaluate(node::Data& node, const Weight& w)
         }
         else {
             // Find the best matching form
-            for (i32 i = 0; i < _countof(list); ++i) {
-                form = std::max(form, form::evaluate(node.field, heights, list[i]));
+            for (i32 i = 0; i < form::COUNT; ++i) {
+                form = std::max(form, form::evaluate(node.field, heights, form::list[i]));
             }
         }
 

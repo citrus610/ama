@@ -17,32 +17,8 @@ void Layer::clear()
 };
 
 // Add a node into the layer
-void Layer::add(node::Data& node, const eval::Weight& w)
+void Layer::add(node::Data& node)
 {
-    // Get the node's hash
-    auto hash = node::get_hash(node);
-
-    // Probes the transposition table
-    auto [found, entry] = this->table.get(hash);
-
-    // If the node's position had already been reached before
-    if (found) {
-        // If the new node's action cost is higher, we don't push or update the tranposition table
-        if (node.score.action < entry->action) {
-            return;
-        }
-
-        // Gets entry's evaluation value
-        node.score.eval = entry->eval;
-    }
-    // Gets node static evaluation if failed
-    else {
-        eval::evaluate(node, w);
-    }
-
-    // Stores the entry in the transposition table
-    this->table.set(entry, hash, node.score.action, node.score.eval);
-
     // If the layer's size is smaller than the beam's width, we simply push the node
     // We then check if the layer's size is big enough, then we turn the data into a binary heap
     if (this->data.size() < this->width) {

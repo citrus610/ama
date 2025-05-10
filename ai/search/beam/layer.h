@@ -16,7 +16,7 @@ public:
     Layer(size_t width);
 public:
     void clear();
-    void add(node::Data& node, const eval::Weight& w);
+    void add(node::Data& node);
     void sort();
 };
 

@@ -7,6 +7,76 @@ namespace form
 {
 
 // Human pattern matching
+i32 evaluate_2(Field& field, u8 height[6], const Data& pattern)
+{
+    i32 result = 0;
+    const i32 error = -100;
+
+    auto map = std::array<cell::Type, AREA>();
+    map.fill(cell::Type::NONE);
+
+    // Makes map
+    for (i8 x = 0; x < 6; ++x) {
+        for (i8 y = 0; y < HEIGHT; ++y) {
+            if (height[x] <= y) {
+                break;
+            }
+
+            // Gets the cell's group index
+            i32 index = pattern.form[y][x];
+
+            if (index == 0) {
+                continue;
+            }
+
+            // Probes map
+            if (map[index] == cell::Type::NONE) {
+                map[index] = field.get_cell(x, y);
+            }
+            else if (map[index] != field.get_cell(x, y) && pattern.matrix[index][index] > 0) {
+                return error;
+            }
+
+            // Increases result
+            result += pattern.matrix[index][index];
+        }
+    }
+
+    // Checks if map is valid
+    for (i32 i = 1; i < pattern.groups; ++i) {
+        if (map[i] == cell::Type::NONE) {
+            continue;
+        }
+
+        for (i32 k = i + 1; k <= pattern.groups; ++k) {
+            if (map[k] == cell::Type::NONE) {
+                continue;
+            }
+
+            // Gets indices' relationship
+            i32 rel = pattern.matrix[i][k];
+
+            if (rel == 0) {
+                continue;
+            }
+            else if (rel < 0) {
+                if (map[i] == map[k]) {
+                    return error;
+                }
+            }
+            else {
+                if (map[i] != map[k]) {
+                    return error;
+                }
+
+                result += pattern.matrix[i][k];
+            }
+        }
+    }
+
+    return result;
+};
+
 i32 evaluate(Field& field, u8 height[6], const Data& pattern)
 {
     i32 result = 0;
@@ -46,52 +116,6 @@ i32 evaluate(Field& field, u8 height[6], const Data& pattern)
                         else {
                             return error;
                         }
-                    }
-                }
-            }
-        }
-    }
-
-    return result;
-};
-
-// Pattern matching
-// But instead of checking the whole field, we only check 2 new puyo blobs at a time
-i32 accumulate(Field& field, u8 height[6], i8 x_check[2], i8 y_check[2], const Data& pattern)
-{
-    i32 result = 0;
-    const i32 error = -100;
-
-    for (i8 x = 0; x < 6; ++x) {
-        for (i8 y = 0; y < HEIGHT; ++y) {
-            if (height[x] <= y) {
-                break;
-            }
-
-            if (pattern.form[y][x] == 0) {
-                continue;
-            }
-
-            auto cell = field.get_cell(x, y);
-
-            for (auto i = 0; i < 2; ++i) {
-                if (pattern.form[y_check[i]][x_check[i]] == 0) {
-                    continue;
-                }
-
-                if (x == x_check[i] && y >= y_check[i]) {
-                    continue;
-                }
-
-                i8 field_rel = i8(cell == field.get_cell(x_check[i], y_check[i])) * 2 - 1;
-                i8 pattern_rel = pattern.matrix[pattern.form[y][x]][pattern.form[y_check[i]][x_check[i]]];
-
-                if (pattern_rel != 0) {
-                    if (field_rel * pattern_rel > 0) {
-                        result += field_rel * pattern_rel;
-                    }
-                    else {
-                        return error;
                     }
                 }
             }

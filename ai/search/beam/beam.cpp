@@ -54,14 +54,46 @@ void think(
 
     // Expands each parent to the next layer
     for (auto& node : parents.data) {
+        // Expanded children list
+        auto expanded = avec<node::Data, 22>();
+
+        // Expands
         beam::expand(pair, node, w, [&] (node::Data& child, const move::Placement& placement, const chain::Score& chain) {
             // Updates max chain score found
             candidates[child.index].score = std::max(candidates[child.index].score, size_t(chain.score));
 
             // Prunes children that triggered big chains
-            if (chain.score < beam::PRUNE) {
-                children.add(child, w);
+            if (chain.score >= beam::PRUNE) {
+                return;
             }
+
+            // Get the node's hash
+            auto hash = node::get_hash(child);
+
+            // Probes the transposition table
+            auto [found, entry] = children.table.get(hash);
+
+            // If the node's position had already been reached before
+            if (found) {
+                // Transposition table cut
+                // If the new node's action cost is higher, we don't push or update the tranposition table
+                if (child.score.action < entry->action) {
+                    return;
+                }
+
+                // Gets entry's evaluation value
+                child.score.eval = entry->eval;
+            }
+            // Gets node static evaluation if failed
+            else {
+                eval::evaluate(child, w);
+            }
+
+            // Stores the entry in the transposition table
+            children.table.set(entry, hash, child.score.action, child.score.eval);
+
+            // Adds children to the next layer
+            children.add(child);
         });
     }
 
