@@ -54,10 +54,6 @@ void think(
 
     // Expands each parent to the next layer
     for (auto& node : parents.data) {
-        // Expanded children list
-        auto expanded = avec<node::Data, 22>();
-
-        // Expands
         beam::expand(pair, node, w, [&] (node::Data& child, const move::Placement& placement, const chain::Score& chain) {
             // Updates max chain score found
             candidates[child.index].score = std::max(candidates[child.index].score, size_t(chain.score));

@@ -306,7 +306,7 @@ Result think(
             }
 
             if (best.attack.score > 0) {
-                if (best.attack.score >= trigger ||
+                if (best.attack.score >= std::min(trigger, 85000) ||
                     enemy_attack >= 90 ||
                     enemy.attack_frame >= 10 ||
                     enemy_small_field ||
@@ -430,15 +430,16 @@ Result think(
         // Gets the frame limit for accepting garbage
         // If there aren't many garbages, we shouldn't accept those if they drop in a long time
         // We should only accept small garbages if the remaining time is small
-        i32 accept_frame = 18;
+        // i32 accept_frame = 18;
 
-        if (enemy_attack < 6) {
-            accept_frame = 4;
-        }
+        // if (enemy_attack < 6) {
+        //     accept_frame = 4;
+        // }
 
         // Accepts
-        if (enemy_attack <= accept_limit &&
-            enemy.attack_frame < accept_frame) {
+        // if (enemy_attack <= accept_limit &&
+        //     enemy.attack_frame < accept_frame) {
+        if (enemy_attack <= accept_limit) {
             // TODO: creates another dfs for stalling and counter
 
             return ai::build(
@@ -771,7 +772,7 @@ Result think(
             }
         }
 
-        if (attack_max < trigger) {
+        if (attack_max < std::min(trigger, 85000)) {
             u8 enemy_heights[6];
             enemy.field.get_heights(enemy_heights);
 
