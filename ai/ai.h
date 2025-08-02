@@ -7,7 +7,7 @@
 namespace ai
 {
 
-constexpr i32 TRIGGER = 95000;
+constexpr i32 TRIGGER = 100000;
 
 namespace style
 {

@@ -14,6 +14,7 @@ struct Configs
     size_t width = 250;
     size_t depth = 16;
     size_t trigger = 95000;
+    bool stretch = true;
 };
 
 struct Candidate

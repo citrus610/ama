@@ -35,32 +35,23 @@ Data gaze(Field& field, dfs::attack::Result& asearch, i32 delay)
     };
 
     // Function for sorting the options
-    const auto cmp_level_1 = [&] (const dfs::attack::Data& a, const dfs::attack::Data& b) {
-        if (a.frame + 2 * a.count != b.frame + 2 * b.count) {
-            return a.frame + 2 * a.count > b.frame + 2 * b.count;
-        }
-
-        if (a.score != b.score) {
-            return a.score < b.score;
-        }
-
-        if (a.link != b.link) {
-            return a.link < b.link;
-        }
-
-        return a.frame_real < b.frame_real;
+    const auto cmp_attack = [&] (const dfs::attack::Data& a, const dfs::attack::Data& b) {
+        return a.score < b.score;
     };
 
-    const auto cmp_level_2 = [&] (const dfs::attack::Data& a, const dfs::attack::Data& b) {
-        if (a.score != b.score) {
-            return a.score < b.score;
+    const auto cmp_defence_1 = [&] (const dfs::attack::Data& a, const dfs::attack::Data& b) {
+        i32 over_a = a.score >= 420;
+        i32 over_b = b.score >= 420;
+
+        if (over_a != over_b) {
+            return over_a < over_b;
         }
 
-        if (a.link != b.link) {
-            return a.link < b.link;
+        if (a.frame_real + 2 * a.count != b.frame_real + 2 * b.count) {
+            return a.frame_real + 2 * a.count > b.frame_real + 2 * b.count;
         }
 
-        return a.frame_real < b.frame_real;
+        return a.score < b.score;
     };
 
     // Finds options
@@ -91,7 +82,7 @@ Data gaze(Field& field, dfs::attack::Result& asearch, i32 delay)
             result.harass = std::max(
                 result.harass,
                 attack,
-                cmp_level_1
+                cmp_attack
             );
         }
 
@@ -100,7 +91,7 @@ Data gaze(Field& field, dfs::attack::Result& asearch, i32 delay)
             result.defence_1 = std::max(
                 result.defence_1,
                 attack,
-                cmp_level_1
+                cmp_defence_1
             );
         }
 
@@ -109,7 +100,7 @@ Data gaze(Field& field, dfs::attack::Result& asearch, i32 delay)
             result.defence_2 = std::max(
                 result.defence_2,
                 attack,
-                cmp_level_2
+                cmp_attack
             );
         }
     };
@@ -153,7 +144,6 @@ i32 get_accept_limit(Field& field)
     i32 result = 0;
 
     i32 field_count = field.get_count();
-    i32 field_count_left = field.get_height(0) + field.get_height(1) + field.get_height(2);
 
     if (field.get_height(2) > 9) {
         return 0;
@@ -243,10 +233,9 @@ bool is_garbage_obstruct(Field& field, chain::Score detect_highest)
     }
 
     return
-        (garbage_count >= 24) ||
+        (garbage_count >= 18) ||
         (garbage_count >= (field.get_count() / 2)) ||
-        (garbage_count >= 12 && unburied_count <= garbage_count) ||
-        (garbage_count >= 12 && detect_highest.score <= 630);
+        (garbage_count >= 12 && unburied_count <= garbage_count);
 };
 
 bool is_small_field(Field& field, Field& other)
@@ -254,7 +243,7 @@ bool is_small_field(Field& field, Field& other)
     i32 field_count = (field.get_mask() & (~field.data[static_cast<i32>(cell::Type::GARBAGE)])).get_count();
     i32 other_count = (other.get_mask() & (~other.data[static_cast<i32>(cell::Type::GARBAGE)])).get_count();
 
-    return (other_count >= field_count * 2 || field_count <= 24) && other_count >= 22;
+    return (other_count >= field_count * 2 || field_count <= 20) && other_count >= 22;
 };
 
 i32 get_resource_balance(Field& field, Field& other)

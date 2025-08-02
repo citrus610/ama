@@ -7,7 +7,7 @@ namespace form
 {
 
 // Human pattern matching
-i32 evaluate_2(Field& field, u8 height[6], const Data& pattern)
+i32 evaluate(Field& field, u8 height[6], const Data& pattern)
 {
     i32 result = 0;
     const i32 error = -100;
@@ -77,7 +77,7 @@ i32 evaluate_2(Field& field, u8 height[6], const Data& pattern)
     return result;
 };
 
-i32 evaluate(Field& field, u8 height[6], const Data& pattern)
+i32 evaluate_2(Field& field, u8 height[6], const Data& pattern)
 {
     i32 result = 0;
     const i32 error = -100;

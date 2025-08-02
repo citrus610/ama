@@ -11,7 +11,7 @@ Thread::Thread()
 
 // Starts the search thread
 // We search all the configuration weights provided
-bool Thread::search(Field field, cell::Queue queue, Configs configs, std::optional<i32> trigger)
+bool Thread::search(Field field, cell::Queue queue, Configs configs, std::optional<i32> trigger, bool stretch)
 {
     if (this->thread != nullptr) {
         return false;
@@ -19,13 +19,14 @@ bool Thread::search(Field field, cell::Queue queue, Configs configs, std::option
 
     this->clear();
 
-    this->thread = new std::thread([&] (Field f, cell::Queue q, Configs w) {
+    this->thread = new std::thread([&] (Field f, cell::Queue q, Configs w, std::optional<i32> t, bool s) {
         auto r = Result();
 
         auto beam_configs = beam::Configs();
 
-        if (trigger.has_value()) {
-            beam_configs.trigger = trigger.value();
+        if (t.has_value()) {
+            beam_configs.trigger = t.value();
+            beam_configs.stretch = s;
         }
 
         if (q.size() > 2) {
@@ -35,7 +36,18 @@ bool Thread::search(Field field, cell::Queue queue, Configs configs, std::option
                 std::sort(
                     r.build.candidates.begin(),
                     r.build.candidates.end(),
-                    [] (const beam::Candidate& a, const beam::Candidate& b) {
+                    [&] (const beam::Candidate& a, const beam::Candidate& b) {
+                        if (beam_configs.stretch) {
+                            return a.score > b.score;
+                        }
+
+                        bool a_enough = a.score / beam::BRANCH >= beam_configs.trigger;
+                        bool b_enough = b.score / beam::BRANCH >= beam_configs.trigger;
+
+                        if (a_enough && b_enough) {
+                            return a.score < b.score;
+                        }
+
                         return a.score > b.score;
                     }
                 );
@@ -49,7 +61,7 @@ bool Thread::search(Field field, cell::Queue queue, Configs configs, std::option
         }
 
         this->results = r;
-    }, field, queue, configs);
+    }, field, queue, configs, trigger, stretch);
 
     return true;
 };

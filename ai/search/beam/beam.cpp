@@ -327,7 +327,18 @@ Result search_multi(
         std::sort(
             result.candidates.begin(),
             result.candidates.end(),
-            [] (const beam::Candidate& a, const beam::Candidate& b) {
+            [&] (const beam::Candidate& a, const beam::Candidate& b) {
+                if (configs.stretch) {
+                    return a.score > b.score;
+                }
+
+                bool a_enough = a.score / beam::BRANCH >= configs.trigger;
+                bool b_enough = b.score / beam::BRANCH >= configs.trigger;
+
+                if (a_enough && b_enough) {
+                    return a.score < b.score;
+                }
+
                 return a.score > b.score;
             }
         );

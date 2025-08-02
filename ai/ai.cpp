@@ -200,6 +200,13 @@ Result think(
     auto self_attacks = dfs::attack::search(self.field, self.queue);
     auto enemy_attacks = dfs::attack::search(enemy.field, { enemy.queue[0], enemy.queue[1] });
 
+    // Gets max attack
+    i32 attack_max = 0;
+
+    for (auto& c : self_attacks.candidates) {
+        attack_max = std::max(attack_max, c.attack_max.score_total);
+    }
+
     // Reads enemy's field
     i32 enemy_delay = enemy.attack_frame + (enemy.dropping > 0) + (enemy.attack_frame > 0 && balance > 0);
 
@@ -308,7 +315,6 @@ Result think(
             if (best.attack.score > 0) {
                 if (best.attack.score >= std::min(trigger, 85000) ||
                     enemy_attack >= 90 ||
-                    enemy.attack_frame >= 10 ||
                     enemy_small_field ||
                     enemy_garbage_obstruct) {
                     return Result {
@@ -427,20 +433,16 @@ Result think(
             accept_limit = std::max(accept_limit, (std::abs(resource_balance) / 6 + 1) * 6);
         }
 
-        // Gets the frame limit for accepting garbage
-        // If there aren't many garbages, we shouldn't accept those if they drop in a long time
-        // We should only accept small garbages if the remaining time is small
-        // i32 accept_frame = 18;
-
-        // if (enemy_attack < 6) {
-        //     accept_frame = 4;
-        // }
-
         // Accepts
-        // if (enemy_attack <= accept_limit &&
-        //     enemy.attack_frame < accept_frame) {
-        if (enemy_attack <= accept_limit) {
+        if (enemy_attack <= accept_limit &&
+            self.field.get_height(2) < 10) {
             // TODO: creates another dfs for stalling and counter
+
+            auto build_type = search::Type::AC;
+
+            if (enemy_attack < 6 && enemy.attack_frame >= 4) {
+                build_type = search::Type::BUILD;
+            }
 
             return ai::build(
                 self.field,
@@ -448,7 +450,7 @@ Result think(
                 bsearch,
                 configs,
                 self_attacks,
-                search::Type::AC,
+                build_type,
                 trigger,
                 true,
                 stretch
@@ -607,7 +609,7 @@ Result think(
         i32 enough = INT32_MAX;
 
         if (enemy_attack >= 90) {
-            enough = (enemy_attack + 60) * target_point;
+            enough = (enemy_attack + 90) * target_point;
         }
 
         auto ai_build = ai::build(
@@ -764,14 +766,6 @@ Result think(
         self.field.get_height(2) > 3;
 
     if (((field_side_enough && field_count >= 24 && field_count < 52) || self.all_clear) && style.attack != style::Attack::NONE) {
-        i32 attack_max = 0;
-
-        for (auto& c : self_attacks.candidates) {
-            if (c.attack_max.score > attack_max) {
-                attack_max = c.attack_max.score;
-            }
-        }
-
         if (attack_max < std::min(trigger, 85000)) {
             u8 enemy_heights[6];
             enemy.field.get_heights(enemy_heights);

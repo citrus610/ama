@@ -40,7 +40,7 @@ private:
 public:
     Thread();
 public:
-    bool search(Field field, cell::Queue queue, Configs configs, std::optional<i32> trigger = {});
+    bool search(Field field, cell::Queue queue, Configs configs, std::optional<i32> trigger = {}, bool stretch = true);
     std::optional<Result> get();
     void clear();
 };
